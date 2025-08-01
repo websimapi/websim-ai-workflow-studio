@@ -39,7 +39,7 @@ async function generateImage() {
         
         resultDiv.innerHTML = `
             <img src="${result.url}" alt="Generated image" />
-            <button onclick="downloadFile('${result.url}', 'generated-image')" class="primary-btn" style="display: inline-block; margin-top: 1rem;">Download</button>
+            <button onclick="downloadImage('${result.url}', 'ai-image.png')" class="primary-btn" style="display: inline-block; margin-top: 1rem;">Download</button>
         `;
     } catch (error) {
         resultDiv.innerHTML = `<p style="color: red;">Error: ${error.message}</p>`;
@@ -70,7 +70,7 @@ async function generateSpeech() {
                 <source src="${result.url}" type="audio/mpeg">
                 Your browser does not support the audio element.
             </audio>
-            <button onclick="downloadFile('${result.url}', '${text.substring(0, 20).replace(/[^a-zA-Z0-9]/g, '')}')" class="primary-btn" style="display: inline-block; margin-top: 1rem;">Download</button>
+            <button onclick="downloadAudio('${result.url}', '${text.substring(0, 20)}.mp3')" class="primary-btn" style="display: inline-block; margin-top: 1rem;">Download</button>
         `;
     } catch (error) {
         resultDiv.innerHTML = `<p style="color: red;">Error: ${error.message}</p>`;
@@ -184,7 +184,7 @@ async function startChain() {
             <p style="text-align: left; white-space: pre-wrap; margin-bottom: 2rem;">${analysis.content}</p>
             <h3>Generated Image:</h3>
             <img src="${newImage.url}" alt="Generated from analysis" />
-            <button onclick="downloadFile('${newImage.url}', 'chain-generated-image')" class="primary-btn" style="display: inline-block; margin-top: 1rem;">Download</button>
+            <button onclick="downloadImage('${newImage.url}', 'ai-chain-image.png')" class="primary-btn" style="display: inline-block; margin-top: 1rem;">Download</button>
         `;
     } catch (error) {
         resultDiv.innerHTML = `<p style="color: red;">Error: ${error.message}</p>`;
@@ -257,23 +257,52 @@ async function combineImages() {
             <p style="text-align: left; white-space: pre-wrap; margin-bottom: 2rem;">${analysis.content}</p>
             <h3>Combined Result:</h3>
             <img src="${combinedImage.url}" alt="Combined image" />
-            <button onclick="downloadFile('${combinedImage.url}', 'combined-image')" class="primary-btn" style="display: inline-block; margin-top: 1rem;">Download</button>
+            <button onclick="downloadImage('${combinedImage.url}', 'ai-combined-image.png')" class="primary-btn" style="display: inline-block; margin-top: 1rem;">Download</button>
         `;
     } catch (error) {
         resultDiv.innerHTML = `<p style="color: red;">Error: ${error.message}</p>`;
     }
 }
 
-// Add download utility function
-function downloadFile(url, filename) {
-    // Create a temporary anchor element
-    const anchor = document.createElement('a');
-    anchor.href = url;
-    anchor.download = filename;
-    anchor.style.display = 'none';
-    
-    // Add to DOM, trigger click, then remove
-    document.body.appendChild(anchor);
-    anchor.click();
-    document.body.removeChild(anchor);
+// Download utilities
+async function downloadImage(imageUrl, filename = 'ai-image.png') {
+  try {
+    const response = await fetch(imageUrl);
+    if (!response.ok) {
+        throw new Error(`Network response was not ok: ${response.statusText}`);
+    }
+    const blob = await response.blob();
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(url);
+  } catch (error) {
+    console.error('Failed to download the image:', error);
+    alert('Could not download the image. See console for details.');
+  }
+}
+
+async function downloadAudio(audioUrl, filename = 'ai-audio.mp3') {
+  try {
+    const response = await fetch(audioUrl);
+    if (!response.ok) {
+        throw new Error(`Network response was not ok: ${response.statusText}`);
+    }
+    const blob = await response.blob();
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(url);
+  } catch (error) {
+    console.error('Failed to download the audio:', error);
+    alert('Could not download the audio. See console for details.');
+  }
 }
