@@ -43,6 +43,7 @@
                     <button onclick="generateImage()" class="primary-btn">Generate Image</button>
                 </div>
                 <div id="imageResult" class="result-area"></div>
+                <button id="commentImageBtn" onclick="commentResult('image')" class="secondary-btn" style="display: none; margin-top: 1rem;">💬 Post as Comment</button>
             </section>
 
             <!-- Text to Speech Workflow -->
@@ -63,6 +64,7 @@
                     <button onclick="generateSpeech()" class="primary-btn">Generate Speech</button>
                 </div>
                 <div id="speechResult" class="result-area"></div>
+                <button id="commentSpeechBtn" onclick="commentResult('speech')" class="secondary-btn" style="display: none; margin-top: 1rem;">💬 Post as Comment</button>
             </section>
 
             <!-- Image to Text Workflow -->
@@ -74,6 +76,7 @@
                     <button onclick="analyzeImage()" class="primary-btn" id="analyzeBtn" disabled>Analyze Image</button>
                 </div>
                 <div id="textResult" class="result-area"></div>
+                <button id="commentTextBtn" onclick="commentResult('text')" class="secondary-btn" style="display: none; margin-top: 1rem;">💬 Post as Comment</button>
             </section>
 
             <!-- Chain Workflow -->
@@ -86,6 +89,7 @@
                     <button onclick="startChain()" class="primary-btn" id="chainBtn" disabled>Start Chain</button>
                 </div>
                 <div id="chainResult" class="result-area"></div>
+                <button id="commentChainBtn" onclick="commentResult('chain')" class="secondary-btn" style="display: none; margin-top: 1rem;">💬 Post as Comment</button>
             </section>
 
             <!-- Combine Images Workflow -->
@@ -114,6 +118,7 @@
                     <button onclick="combineImages()" class="primary-btn" id="combineBtn" disabled>Combine Images</button>
                 </div>
                 <div id="combineResult" class="result-area"></div>
+                <button id="commentCombineBtn" onclick="commentResult('combine')" class="secondary-btn" style="display: none; margin-top: 1rem;">💬 Post as Comment</button>
             </section>
         </main>
     </div>

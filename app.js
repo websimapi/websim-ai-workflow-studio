@@ -3,6 +3,11 @@ let currentWorkflow = 'text-to-image';
 let uploadedImage = null;
 let uploadedImage2 = null;
 
+// Global state for comment functionality
+let lastGeneratedImage = null;
+let lastGeneratedText = null;
+let lastGeneratedAudio = null;
+
 // Navigation
 document.querySelectorAll('.nav-btn').forEach(btn => {
     btn.addEventListener('click', () => {
@@ -37,12 +42,18 @@ async function generateImage() {
             transparent: transparent
         });
         
+        lastGeneratedImage = result.url;
+        lastGeneratedText = `Generated image from prompt: "${prompt}"`;
+        
         resultDiv.innerHTML = `
             <img src="${result.url}" alt="Generated image" />
             <button onclick="downloadImage('${result.url}', 'ai-image.png')" class="primary-btn" style="display: inline-block; margin-top: 1rem;">Download</button>
         `;
+        
+        document.getElementById('commentImageBtn').style.display = 'inline-block';
     } catch (error) {
         resultDiv.innerHTML = `<p style="color: red;">Error: ${error.message}</p>`;
+        document.getElementById('commentImageBtn').style.display = 'none';
     }
 }
 
@@ -65,6 +76,9 @@ async function generateSpeech() {
             voice: voice
         });
         
+        lastGeneratedAudio = result.url;
+        lastGeneratedText = `Generated speech from text: "${text}"`;
+        
         resultDiv.innerHTML = `
             <audio controls>
                 <source src="${result.url}" type="audio/mpeg">
@@ -72,8 +86,11 @@ async function generateSpeech() {
             </audio>
             <button onclick="downloadAudio('${result.url}', '${text.substring(0, 20)}.mp3')" class="primary-btn" style="display: inline-block; margin-top: 1rem;">Download</button>
         `;
+        
+        document.getElementById('commentSpeechBtn').style.display = 'inline-block';
     } catch (error) {
         resultDiv.innerHTML = `<p style="color: red;">Error: ${error.message}</p>`;
+        document.getElementById('commentSpeechBtn').style.display = 'none';
     }
 }
 
@@ -119,12 +136,18 @@ async function analyzeImage() {
             ]
         });
         
+        lastGeneratedText = completion.content;
+        lastGeneratedImage = uploadedImage;
+        
         resultDiv.innerHTML = `
             <h3>Analysis:</h3>
             <p style="text-align: left; white-space: pre-wrap;">${completion.content}</p>
         `;
+        
+        document.getElementById('commentTextBtn').style.display = 'inline-block';
     } catch (error) {
         resultDiv.innerHTML = `<p style="color: red;">Error: ${error.message}</p>`;
+        document.getElementById('commentTextBtn').style.display = 'none';
     }
 }
 
@@ -179,6 +202,9 @@ async function startChain() {
             aspect_ratio: "16:9"
         });
         
+        lastGeneratedImage = newImage.url;
+        lastGeneratedText = `Chain workflow result: Original analysis: "${analysis.content}"`;
+        
         resultDiv.innerHTML = `
             <h3>Original Analysis:</h3>
             <p style="text-align: left; white-space: pre-wrap; margin-bottom: 2rem;">${analysis.content}</p>
@@ -186,8 +212,11 @@ async function startChain() {
             <img src="${newImage.url}" alt="Generated from analysis" />
             <button onclick="downloadImage('${newImage.url}', 'ai-chain-image.png')" class="primary-btn" style="display: inline-block; margin-top: 1rem;">Download</button>
         `;
+        
+        document.getElementById('commentChainBtn').style.display = 'inline-block';
     } catch (error) {
         resultDiv.innerHTML = `<p style="color: red;">Error: ${error.message}</p>`;
+        document.getElementById('commentChainBtn').style.display = 'none';
     }
 }
 
@@ -212,19 +241,6 @@ function handleCombineUpload(event, index) {
     };
     reader.readAsDataURL(file);
 }
-
-// Add weight slider functionality
-document.addEventListener('DOMContentLoaded', () => {
-    const slider = document.getElementById('weightSlider');
-    const display = document.getElementById('weightDisplay');
-    
-    if (slider) {
-        slider.addEventListener('input', (e) => {
-            const value = e.target.value;
-            display.textContent = `${value}% Image 1 / ${100-value}% Image 2`;
-        });
-    }
-});
 
 async function combineImages() {
     if (!uploadedImage || !uploadedImage2) return;
@@ -296,6 +312,9 @@ Write as if you're a photographer describing a scene to another artist who needs
             aspect_ratio: "16:9"
         });
         
+        lastGeneratedImage = combinedImage.url;
+        lastGeneratedText = `Combined images result: Prompt: "${prompt}" | Description: "${cleanedPrompt}"`;
+        
         resultDiv.innerHTML = `
             <h3>Enhanced Description (focused on user-specified details):</h3>
             <div style="text-align: left; white-space: pre-wrap; max-height: 200px; overflow-y: auto; background: #f5f5f5; padding: 1rem; border-radius: 10px; margin-bottom: 2rem; line-height: 1.6;">
@@ -305,8 +324,68 @@ Write as if you're a photographer describing a scene to another artist who needs
             <img src="${combinedImage.url}" alt="Combined image with enhanced detail preservation" style="max-width: 100%; border-radius: 10px; box-shadow: 0 5px 15px rgba(0,0,0,0.1);" />
             <button onclick="downloadImage('${combinedImage.url}', 'ai-enhanced-combined-image.png')" class="primary-btn" style="display: inline-block; margin-top: 1rem;">Download</button>
         `;
+        
+        document.getElementById('commentCombineBtn').style.display = 'inline-block';
     } catch (error) {
         resultDiv.innerHTML = `<p style="color: red;">Error: ${error.message}</p>`;
+        document.getElementById('commentCombineBtn').style.display = 'none';
+    }
+}
+
+// Add weight slider functionality
+document.addEventListener('DOMContentLoaded', () => {
+    const slider = document.getElementById('weightSlider');
+    const display = document.getElementById('weightDisplay');
+    
+    if (slider) {
+        slider.addEventListener('input', (e) => {
+            const value = e.target.value;
+            display.textContent = `${value}% Image 1 / ${100-value}% Image 2`;
+        });
+    }
+});
+
+// Comment functionality
+async function commentResult(type) {
+    let content = '';
+    let images = [];
+    
+    switch(type) {
+        case 'image':
+            content = lastGeneratedText || 'AI generated image';
+            if (lastGeneratedImage) images = [lastGeneratedImage];
+            break;
+        case 'speech':
+            content = lastGeneratedText || 'AI generated speech';
+            if (lastGeneratedAudio) content += `\n\n[Audio: ${lastGeneratedAudio}]`;
+            break;
+        case 'text':
+            content = lastGeneratedText || 'AI generated text analysis';
+            if (lastGeneratedImage) images = [lastGeneratedImage];
+            break;
+        case 'chain':
+            content = lastGeneratedText || 'AI chain workflow result';
+            if (lastGeneratedImage) images = [lastGeneratedImage];
+            break;
+        case 'combine':
+            content = lastGeneratedText || 'AI combined images result';
+            if (lastGeneratedImage) images = [lastGeneratedImage];
+            break;
+    }
+    
+    if (!content) {
+        alert('No result to comment');
+        return;
+    }
+    
+    try {
+        await window.websim.postComment({
+            content: content,
+            images: images.slice(0, 4)
+        });
+    } catch (error) {
+        console.error('Error posting comment:', error);
+        alert('Could not post comment. Please try again.');
     }
 }
 
