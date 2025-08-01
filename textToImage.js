@@ -34,4 +34,3 @@ export async function handleGenerateImage() {
         document.getElementById('commentImageBtn').style.display = 'none';
     }
 }
-

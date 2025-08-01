@@ -42,8 +42,10 @@ export function getCurrentWorkflow() {
 
 export function setUploadedImage(image) {
     uploadedImage = image;
+    window.uploadedImage = image; // Make sure it's available globally
 }
 
 export function setUploadedImage2(image) {
     uploadedImage2 = image;
+    window.uploadedImage2 = image; // Make sure it's available globally
 }
