@@ -419,22 +419,10 @@ async function loadComments() {
             div.className = 'comment-item';
             div.dataset.commentId = comment.id;
             
-            // Extract images from comment content
+            // Extract images from raw_content markdown
             let imageUrls = [];
             if (comment.raw_content) {
                 imageUrls = extractImageUrlsFromMarkdown(comment.raw_content);
-            }
-            
-            // Also check if there are any images in the structured content
-            if (comment.content?.children) {
-                comment.content.children.forEach(child => {
-                    if (child.type === 'image' && child.attrs?.src) {
-                        const url = child.attrs.src;
-                        if (!imageUrls.includes(url)) {
-                            imageUrls.push(url);
-                        }
-                    }
-                });
             }
             
             let content = `
@@ -463,30 +451,20 @@ async function loadComments() {
     }
 }
 
-// Update image extraction for markdown format
+// Updated image extraction for markdown format
 function extractImageUrlsFromMarkdown(content) {
     const urls = [];
     
-    // Match both markdown image formats: ![alt](url) and [![](url)](url)
-    const regex = /!\[.*?\]\((.*?)\)/g;
+    // Match the pattern [![](url)](url) or ![](url)
+    const regex = /!\[.*?\]\((.*?)\)|\[!\[.*?\]\((.*?)\)\]\((.*?)\)/g;
     let match;
     
     while ((match = regex.exec(content)) !== null) {
-        const url = match[1];
-        if (url && url.startsWith('http') && !urls.includes(url)) {
+        // The actual image URL is either in group 1 (simple format) or group 2 (linked format)
+        const url = match[1] || match[2] || match[3];
+        if (url && !urls.includes(url)) {
             urls.push(url);
         }
-    }
-    
-    // Also try to catch direct URLs
-    const urlRegex = /(https?:\/\/[^\s]+\.(?:png|jpg|jpeg|gif|webp|svg))/gi;
-    const directMatches = content.match(urlRegex);
-    if (directMatches) {
-        directMatches.forEach(url => {
-            if (!urls.includes(url)) {
-                urls.push(url);
-            }
-        });
     }
     
     return urls;
@@ -537,12 +515,15 @@ async function processComment() {
     const resultDiv = document.getElementById('commentResult');
     resultDiv.innerHTML = '<div class="loading"></div>';
     
+    console.log('Starting comment processing with type:', processType);
+    console.log('Selected comment:', selectedComment);
+    console.log('Comment images:', commentImages);
+    
     try {
         switch(processType) {
             case 'image-to-text':
                 if (commentImages.length === 0) {
-                    alert('No images found in comment for Image → Text processing');
-                    return;
+                    throw new Error('No images found in comment for Image → Text processing');
                 }
                 await processImageToText();
                 break;
@@ -557,14 +538,14 @@ async function processComment() {
                 
             case 'chain':
                 if (commentImages.length === 0) {
-                    alert('No images found in comment for Image → Text → Image processing');
-                    return;
+                    throw new Error('No images found in comment for Image → Text → Image processing');
                 }
                 await processChain();
                 break;
         }
         
         document.getElementById('commentOutputBtn').style.display = 'inline-block';
+        console.log('Comment processing completed successfully');
     } catch (error) {
         console.error('Error in processComment:', error);
         resultDiv.innerHTML = `<p style="color: red;">Error: ${error.message}</p>`;
@@ -572,20 +553,13 @@ async function processComment() {
     }
 }
 
-// Update processImageToText to handle image URLs correctly
 async function processImageToText() {
-    if (commentImages.length === 0) {
-        alert('No images found in comment for Image → Text processing');
-        return;
-    }
-    
-    const imageUrl = commentImages[0];
-    
-    const resultDiv = document.getElementById('commentResult');
-    resultDiv.innerHTML = '<div class="loading"></div>';
+    const imageUrl = commentImages[0]; // Use first image
     
     try {
-        const completion = await websim.chat.completions.create({
+        console.log('Processing Image→Text with URL:', imageUrl);
+        
+        const analysis = await websim.chat.completions.create({
             messages: [
                 {
                     role: "user",
@@ -603,75 +577,88 @@ async function processImageToText() {
             ]
         });
         
+        console.log('Image analysis complete:', analysis);
+        
+        const resultDiv = document.getElementById('commentResult');
         resultDiv.innerHTML = `
             <h3>Image Analysis:</h3>
             <img src="${imageUrl}" alt="Comment image" style="max-width: 300px; margin: 1rem 0;" />
-            <p style="text-align: left; white-space: pre-wrap;">${completion.content}</p>
+            <p style="text-align: left; white-space: pre-wrap;">${analysis.content}</p>
         `;
         
-        lastGeneratedText = `Comment Image→Text "${completion.content}"`;
+        lastGeneratedText = `Comment Image→Text "${analysis.content}"`;
         lastGeneratedImage = imageUrl;
     } catch (error) {
-        console.error('Error in processImageToText:', error);
-        resultDiv.innerHTML = `<p style="color: red;">Error: ${error.message}</p>`;
+        console.error('Error in Image→Text processing:', error);
+        throw new Error(`Image analysis failed: ${error.message}`);
     }
 }
 
-// Update processTextToImage to handle image URLs correctly
 async function processTextToImage() {
     const text = selectedComment.raw_content || 'AI generated from comment';
     
-    const image = await websim.imageGen({
-        prompt: text,
-        aspect_ratio: "16:9"
-    });
-    
-    const resultDiv = document.getElementById('commentResult');
-    resultDiv.innerHTML = `
-        <h3>Generated from Comment:</h3>
-        <img src="${image.url}" alt="Generated from comment" style="max-width: 400px;" />
-        <p style="margin-top: 1rem;"><strong>Prompt:</strong> ${text}</p>
-    `;
-    
-    lastGeneratedText = `Comment Text→Image "${text}"`;
-    lastGeneratedImage = image.url;
+    try {
+        console.log('Processing Text→Image with text:', text);
+        
+        const image = await websim.imageGen({
+            prompt: text,
+            aspect_ratio: "16:9"
+        });
+        
+        console.log('Image generated:', image);
+        
+        const resultDiv = document.getElementById('commentResult');
+        resultDiv.innerHTML = `
+            <h3>Generated from Comment:</h3>
+            <img src="${image.url}" alt="Generated from comment" style="max-width: 400px;" />
+            <p style="margin-top: 1rem;"><strong>Prompt:</strong> ${text}</p>
+        `;
+        
+        lastGeneratedText = `Comment Text→Image "${text}"`;
+        lastGeneratedImage = image.url;
+    } catch (error) {
+        console.error('Error in Text→Image processing:', error);
+        throw new Error(`Image generation failed: ${error.message}`);
+    }
 }
 
-// Update processTextToSpeech to handle image URLs correctly
 async function processTextToSpeech() {
     const text = selectedComment.raw_content || 'AI generated speech';
     
-    const speech = await websim.textToSpeech({
-        text: text,
-        voice: 'en-male'
-    });
-    
-    const resultDiv = document.getElementById('commentResult');
-    resultDiv.innerHTML = `
-        <h3>Speech from Comment:</h3>
-        <audio controls>
-            <source src="${speech.url}" type="audio/mpeg">
-            Your browser does not support the audio element.
-        </audio>
-        <p style="margin-top: 1rem;"><strong>Text:</strong> ${text}</p>
-    `;
-    
-    lastGeneratedText = `Comment Text→Speech "${text}"`;
-    lastGeneratedAudio = speech.url;
+    try {
+        console.log('Processing Text→Speech with text:', text);
+        
+        const speech = await websim.textToSpeech({
+            text: text,
+            voice: 'en-male'
+        });
+        
+        console.log('Speech generated:', speech);
+        
+        const resultDiv = document.getElementById('commentResult');
+        resultDiv.innerHTML = `
+            <h3>Speech from Comment:</h3>
+            <audio controls>
+                <source src="${speech.url}" type="audio/mpeg">
+                Your browser does not support the audio element.
+            </audio>
+            <p style="margin-top: 1rem;"><strong>Text:</strong> ${text}</p>
+        `;
+        
+        lastGeneratedText = `Comment Text→Speech "${text}"`;
+        lastGeneratedAudio = speech.url;
+    } catch (error) {
+        console.error('Error in Text→Speech processing:', error);
+        throw new Error(`Speech generation failed: ${error.message}`);
+    }
 }
 
-// Update processChain to handle image URLs correctly
 async function processChain() {
-    if (commentImages.length === 0) {
-        alert('No images found in comment for Image → Text → Image processing');
-        return;
-    }
-    
-    const imageUrl = commentImages[0];
-    const resultDiv = document.getElementById('commentResult');
-    resultDiv.innerHTML = '<div class="loading"></div><p>Analyzing image...</p>';
+    const imageUrl = commentImages[0]; // Use first image
     
     try {
+        console.log('Processing Image→Text→Image with URL:', imageUrl);
+        
         // Step 1: Analyze image
         const analysis = await websim.chat.completions.create({
             messages: [
@@ -691,7 +678,7 @@ async function processChain() {
             ]
         });
         
-        resultDiv.innerHTML = '<div class="loading"></div><p>Generating new image...</p>';
+        console.log('Image analysis complete:', analysis);
         
         // Step 2: Generate new image
         const newImage = await websim.imageGen({
@@ -699,9 +686,9 @@ async function processChain() {
             aspect_ratio: "16:9"
         });
         
-        lastGeneratedText = `Comment Image→Text→Image "${analysis.content}"`;
-        lastGeneratedImage = newImage.url;
+        console.log('New image generated:', newImage);
         
+        const resultDiv = document.getElementById('commentResult');
         resultDiv.innerHTML = `
             <h3>Chain Process Results:</h3>
             <img src="${imageUrl}" alt="Comment image" style="max-width: 200px; margin: 0.5rem;" />
@@ -710,9 +697,11 @@ async function processChain() {
             <p style="text-align: left; white-space: pre-wrap; margin-bottom: 1rem;">${analysis.content}</p>
         `;
         
+        lastGeneratedText = `Comment Image→Text→Image "${analysis.content}"`;
+        lastGeneratedImage = newImage.url;
     } catch (error) {
-        console.error('Error in processChain:', error);
-        resultDiv.innerHTML = `<p style="color: red;">Error: ${error.message}</p>`;
+        console.error('Error in Image→Text→Image processing:', error);
+        throw new Error(`Chain processing failed: ${error.message}`);
     }
 }
 
