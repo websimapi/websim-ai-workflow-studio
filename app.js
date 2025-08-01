@@ -526,11 +526,11 @@ async function processComment() {
                 break;
                 
             case 'text-to-image':
-                await processTextToImage();
+                await generateImage();
                 break;
                 
             case 'text-to-speech':
-                await processTextToSpeech();
+                await generateSpeech();
                 break;
                 
             case 'chain':
@@ -547,91 +547,6 @@ async function processComment() {
         resultDiv.innerHTML = `<p style="color: red;">Error: ${error.message}</p>`;
         document.getElementById('commentOutputBtn').style.display = 'none';
     }
-}
-
-// Update the processImageToText function to handle image re-upload
-async function processImageToText() {
-    const imageUrl = commentImages[0]; // Use first image
-    
-    // Re-upload the image to prevent CORS issues
-    const response = await fetch(imageUrl);
-    const blob = await response.blob();
-    const newImageUrl = await websim.upload(blob);
-    
-    const analysis = await websim.chat.completions.create({
-        messages: [
-            {
-                role: "user",
-                content: [
-                    {
-                        type: "text",
-                        text: "Describe this image in detail. Include what's visible, the style, colors, mood, and any interesting elements."
-                    },
-                    {
-                        type: "image_url",
-                        image_url: { url: newImageUrl }
-                    }
-                ]
-            }
-        ]
-    });
-    
-    const resultDiv = document.getElementById('commentResult');
-    resultDiv.innerHTML = `
-        <h3>Image Analysis:</h3>
-        <img src="${newImageUrl}" alt="Comment image" style="max-width: 300px; margin: 1rem 0;" />
-        <p style="text-align: left; white-space: pre-wrap;">${analysis.content}</p>
-    `;
-    
-    lastGeneratedText = `Comment Image→Text "${analysis.content}"`;
-    lastGeneratedImage = newImageUrl;
-}
-
-// Update the processChain function to handle image re-upload
-async function processChain() {
-    const imageUrl = commentImages[0]; // Use first image
-    
-    // Re-upload the image to prevent CORS issues
-    const response = await fetch(imageUrl);
-    const blob = await response.blob();
-    const newImageUrl = await websim.upload(blob);
-    
-    // Step 1: Analyze image
-    const analysis = await websim.chat.completions.create({
-        messages: [
-            {
-                role: "user",
-                content: [
-                    {
-                        type: "text",
-                        text: "Describe this image in detail for the purpose of generating a new image. Focus on the key visual elements, style, and composition."
-                    },
-                    {
-                        type: "image_url",
-                        image_url: { url: newImageUrl }
-                    }
-                ]
-            }
-        ]
-    });
-    
-    // Step 2: Generate new image
-    const newImage = await websim.imageGen({
-        prompt: analysis.content,
-        aspect_ratio: "16:9"
-    });
-    
-    const resultDiv = document.getElementById('commentResult');
-    resultDiv.innerHTML = `
-        <h3>Chain Process Results:</h3>
-        <img src="${newImageUrl}" alt="Comment image" style="max-width: 200px; margin: 0.5rem;" />
-        <img src="${newImage.url}" alt="Generated from analysis" style="max-width: 200px; margin: 0.5rem;" />
-        <h4>Analysis:</h4>
-        <p style="text-align: left; white-space: pre-wrap; margin-bottom: 1rem;">${analysis.content}</p>
-    `;
-    
-    lastGeneratedText = `Comment Image→Text→Image "${analysis.content}"`;
-    lastGeneratedImage = newImage.url;
 }
 
 // Download utilities
