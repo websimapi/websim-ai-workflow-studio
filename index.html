@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Workflow Studio</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="app-container">
+        <header>
+            <h1>AI Workflow Studio</h1>
+            <p>Explore AI-powered creative workflows</p>
+        </header>
+
+        <nav class="workflow-nav">
+            <button class="nav-btn active" data-workflow="text-to-image">Text → Image</button>
+            <button class="nav-btn" data-workflow="text-to-speech">Text → Speech</button>
+            <button class="nav-btn" data-workflow="image-to-text">Image → Text</button>
+            <button class="nav-btn" data-workflow="chain">Image → Text → Image</button>
+            <button class="nav-btn" data-workflow="combine">Combine Images</button>
+        </nav>
+
+        <main>
+            <!-- Text to Image Workflow -->
+            <section id="text-to-image" class="workflow active">
+                <h2>Text to Image Generation</h2>
+                <div class="input-group">
+                    <textarea id="imagePrompt" placeholder="Describe the image you want to generate..." rows="3"></textarea>
+                    <div class="options">
+                        <label>Aspect Ratio:
+                            <select id="aspectRatio">
+                                <option value="1:1">Square (1:1)</option>
+                                <option value="16:9">Landscape (16:9)</option>
+                                <option value="9:16">Portrait (9:16)</option>
+                                <option value="4:3">Standard (4:3)</option>
+                            </select>
+                        </label>
+                        <label>
+                            <input type="checkbox" id="transparentBg"> Transparent Background
+                        </label>
+                    </div>
+                    <button onclick="generateImage()" class="primary-btn">Generate Image</button>
+                </div>
+                <div id="imageResult" class="result-area"></div>
+            </section>
+
+            <!-- Text to Speech Workflow -->
+            <section id="text-to-speech" class="workflow">
+                <h2>Text to Speech</h2>
+                <div class="input-group">
+                    <textarea id="speechText" placeholder="Enter text to convert to speech..." rows="3"></textarea>
+                    <div class="options">
+                        <label>Voice:
+                            <select id="voice">
+                                <option value="en-male">Male (English)</option>
+                                <option value="en-female">Female (English)</option>
+                                <option value="es-male">Male (Spanish)</option>
+                                <option value="fr-female">Female (French)</option>
+                            </select>
+                        </label>
+                    </div>
+                    <button onclick="generateSpeech()" class="primary-btn">Generate Speech</button>
+                </div>
+                <div id="speechResult" class="result-area"></div>
+            </section>
+
+            <!-- Image to Text Workflow -->
+            <section id="image-to-text" class="workflow">
+                <h2>Image to Text Analysis</h2>
+                <div class="input-group">
+                    <input type="file" id="imageUpload" accept="image/*" onchange="handleImageUpload(event)">
+                    <div id="uploadPreview" class="upload-preview"></div>
+                    <button onclick="analyzeImage()" class="primary-btn" id="analyzeBtn" disabled>Analyze Image</button>
+                </div>
+                <div id="textResult" class="result-area"></div>
+            </section>
+
+            <!-- Chain Workflow -->
+            <section id="chain" class="workflow">
+                <h2>Image → Text → Image</h2>
+                <div class="input-group">
+                    <p>Upload an image, AI will describe it, then generate a new image based on the description</p>
+                    <input type="file" id="chainImageUpload" accept="image/*" onchange="handleChainUpload(event)">
+                    <div id="chainPreview" class="upload-preview"></div>
+                    <button onclick="startChain()" class="primary-btn" id="chainBtn" disabled>Start Chain</button>
+                </div>
+                <div id="chainResult" class="result-area"></div>
+            </section>
+
+            <!-- Combine Images Workflow -->
+            <section id="combine" class="workflow">
+                <h2>Combine Two Images</h2>
+                <div class="input-group">
+                    <div class="image-uploads">
+                        <div>
+                            <label>Image 1:</label>
+                            <input type="file" id="image1" accept="image/*" onchange="handleCombineUpload(event, 1)">
+                            <div id="preview1" class="upload-preview small"></div>
+                        </div>
+                        <div>
+                            <label>Image 2:</label>
+                            <input type="file" id="image2" accept="image/*" onchange="handleCombineUpload(event, 2)">
+                            <div id="preview2" class="upload-preview small"></div>
+                        </div>
+                    </div>
+                    <input type="text" id="combinePrompt" placeholder="Describe how to combine these images..." />
+                    <button onclick="combineImages()" class="primary-btn" id="combineBtn" disabled>Combine Images</button>
+                </div>
+                <div id="combineResult" class="result-area"></div>
+            </section>
+        </main>
+    </div>
+
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+            "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+        }
+    }
+    </script>
+    <script src="app.js"></script>
+<script defer src="https://static.cloudflareinsights.com/beacon.min.js/v8c78df7c7c0f484497ecbca7046644da1771523124516" integrity="sha512-8DS7rgIrAmghBFwoOTujcf6D9rXvH8xm8JQ1Ja01h9QX8EzXldiszufYa4IFfKdLUKTTrnSFXLDkUEOTrZQ8Qg==" data-cf-beacon='{"version":"2024.11.0","token":"4c6229722a6346bc8eb5cb0e5eae5d41","server_timing":{"name":{"cfCacheStatus":true,"cfEdge":true,"cfExtPri":true,"cfL4":true,"cfOrigin":true,"cfSpeedBrain":true},"location_startswith":null}}' crossorigin="anonymous"></script>
+</body>
+</html>
+
