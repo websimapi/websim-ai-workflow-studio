@@ -364,12 +364,15 @@ export function startRecording() {
         }
         
         const textarea = document.getElementById('speechToTextResult');
-        if (finalTranscript) {
-            textarea.value += finalTranscript;
-            updateAppState({ speechText: textarea.value });
+        // Only append final transcript, don't accumulate
+        if (finalTranscript.trim()) {
+            textarea.value += finalTranscript.trim() + ' ';
+            updateAppState({ speechText: textarea.value.trim() });
             document.getElementById('processSpeechBtn').disabled = false;
         }
-        textarea.value = textarea.value.replace(interimTranscript, '') + interimTranscript;
+        
+        // Show interim results but don't append to final text
+        textarea.value = textarea.value.replace(/[^]*$/, interimTranscript);
     };
     
     recognition.onerror = (event) => {
@@ -380,7 +383,7 @@ export function startRecording() {
     
     recognition.onend = () => {
         if (getAppState().isRecording) {
-            recognition.start(); // Restart if still supposed to be recording
+            recognition.start();
         }
     };
     
