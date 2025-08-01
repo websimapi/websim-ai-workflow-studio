@@ -1,15 +1,28 @@
-// Global state management
-export const state = {
-    currentWorkflow: 'text-to-image',
-    uploadedImage: null,
-    uploadedImage2: null,
-    lastGeneratedImage: null,
-    lastGeneratedText: null,
-    lastGeneratedAudio: null,
-    selectedComment: null,
-    commentImages: []
+let lastGenerated = {
+    type: null,
+    url: null,
+    text: null
 };
 
-// Re-export for backward compatibility
-window.state = state;
+export function setLastGenerated({ type, url, text }) {
+    lastGenerated = { type, url, text };
+}
+
+export function getLastGenerated() {
+    return lastGenerated;
+}
+
+// Export global variables for compatibility
+export let uploadedImage = null;
+export let uploadedImage2 = null;
+
+export function setUploadedImage(image) {
+    uploadedImage = image;
+    window.uploadedImage = image;
+}
+
+export function setUploadedImage2(image) {
+    uploadedImage2 = image;
+    window.uploadedImage2 = image;
+}
 

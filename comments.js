@@ -1,28 +1,43 @@
-import { state } from './state.js';
-import { extractImageUrlsFromMarkdown, showLoading, showError } from './utils.js';
+import { analyzeImage, generateImage, generateSpeech, getProjectComments, reuploadImageFromUrl, postComment } from './api.js';
+import { setLastGenerated, getLastGenerated } from './state.js';
+
+let selectedComment = null;
+let commentImages = [];
+
+export function extractImageUrlsFromMarkdown(content) {
+    const urls = [];
+    const regex = /!\[.*?\]\((.*?)\)|\[!\[.*?\]\((.*?)\)\]\((.*?)\)/g;
+    let match;
+    
+    while ((match = regex.exec(content)) !== null) {
+        const url = match[1] || match[2] || match[3];
+        if (url && !urls.includes(url)) {
+            urls.push(url);
+        }
+    }
+    
+    return urls;
+}
 
 export async function loadComments() {
     const commentsDiv = document.getElementById('commentsList');
     
     try {
-        const project = await window.websim.getCurrentProject();
-        const response = await fetch(`/api/v1/projects/${project.id}/comments`);
-        const data = await response.json();
+        const comments = await getProjectComments();
         
-        if (!data.comments?.data?.length) {
+        if (!comments.length) {
             commentsDiv.innerHTML = '<p style="text-align: center; color: #666;">No comments found</p>';
             return;
         }
         
         commentsDiv.innerHTML = '';
         
-        data.comments.data.forEach(item => {
+        comments.forEach(item => {
             const comment = item.comment;
             const div = document.createElement('div');
             div.className = 'comment-item';
             div.dataset.commentId = comment.id;
             
-            // Extract images from raw_content markdown
             let imageUrls = [];
             if (comment.raw_content) {
                 imageUrls = extractImageUrlsFromMarkdown(comment.raw_content);
@@ -50,23 +65,20 @@ export async function loadComments() {
         
     } catch (error) {
         console.error('Error loading comments:', error);
-        commentsDiv.innerHTML = '<p style="text-align: center; color: red;">Error loading comments</p>';
+        document.getElementById('commentsList').innerHTML = '<p style="text-align: center; color: red;">Error loading comments</p>';
     }
 }
 
 function selectComment(comment, imageUrls) {
-    // Clear previous selection
     document.querySelectorAll('.comment-item').forEach(item => {
         item.classList.remove('selected');
     });
     
-    // Select new comment
     document.querySelector(`[data-comment-id="${comment.id}"]`).classList.add('selected');
     
-    state.selectedComment = comment;
-    state.commentImages = imageUrls;
+    selectedComment = comment;
+    commentImages = imageUrls;
     
-    // Show selected comment preview
     document.getElementById('commentSelected').style.display = 'block';
     document.getElementById('commentContent').innerHTML = `
         <strong>Selected Comment:</strong>
@@ -89,201 +101,167 @@ function selectComment(comment, imageUrls) {
     }
 }
 
-// Process functions for comment to X
-async function processImageToText() {
-    const resultDiv = document.getElementById('commentResult');
-    
-    try {
-        const imageUrl = state.commentImages[0];
-        
-        // Re-upload the image to avoid CORS issues
-        const response = await fetch(imageUrl);
-        const blob = await response.blob();
-        const base64 = await new Promise((resolve) => {
-            const reader = new FileReader();
-            reader.onloadend = () => resolve(reader.result);
-            reader.readAsDataURL(blob);
-        });
-        
-        const analysis = await websim.chat.completions.create({
-            messages: [
-                {
-                    role: "user",
-                    content: [
-                        {
-                            type: "text",
-                            text: "Describe this image in detail. Include what's visible, the style, colors, mood, and any interesting elements."
-                        },
-                        {
-                            type: "image_url",
-                            image_url: { url: base64 }
-                        }
-                    ]
-                }
-            ]
-        });
-        
-        state.lastGeneratedText = `Image->Text "${analysis.content}"`;
-        
-        resultDiv.innerHTML = `
-            <h3>Analysis:</h3>
-            <p style="text-align: left; white-space: pre-wrap;">${analysis.content}</p>
-        `;
-    } catch (error) {
-        throw error;
-    }
-}
-
-async function processTextToImage() {
-    const prompt = state.selectedComment.raw_content || 'AI generated image from comment';
-    const resultDiv = document.getElementById('commentResult');
-    showLoading(resultDiv);
-    
-    try {
-        const result = await websim.imageGen({
-            prompt: prompt,
-            aspect_ratio: "16:9"
-        });
-        
-        state.lastGeneratedImage = result.url;
-        state.lastGeneratedText = `Text->Image "${prompt}"`;
-        
-        resultDiv.innerHTML = `
-            <img src="${result.url}" alt="Generated from comment" />
-            <button onclick="import('./utils.js').then(mod => mod.downloadImage('${result.url}', 'ai-comment-image.png'))" class="primary-btn" style="display: inline-block; margin-top: 1rem;">Download</button>
-        `;
-    } catch (error) {
-        throw error;
-    }
-}
-
-async function processTextToSpeech() {
-    const text = state.selectedComment.raw_content || 'No text provided';
-    const resultDiv = document.getElementById('commentResult');
-    showLoading(resultDiv);
-    
-    try {
-        const result = await websim.textToSpeech({
-            text: text,
-            voice: 'en-male'
-        });
-        
-        state.lastGeneratedAudio = result.url;
-        state.lastGeneratedText = `Text->Speech "${text}"`;
-        
-        resultDiv.innerHTML = `
-            <audio controls>
-                <source src="${result.url}" type="audio/mpeg">
-                Your browser does not support the audio element.
-            </audio>
-            <button onclick="import('./utils.js').then(mod => mod.downloadAudio('${result.url}', 'comment-audio.mp3'))" class="primary-btn" style="display: inline-block; margin-top: 1rem;">Download</button>
-        `;
-    } catch (error) {
-        throw error;
-    }
-}
-
-async function processChain() {
-    const resultDiv = document.getElementById('commentResult');
-    showLoading(resultDiv, 'Analyzing image...');
-    
-    try {
-        const imageUrl = state.commentImages[0];
-        
-        // Re-upload the image to avoid CORS issues
-        const response = await fetch(imageUrl);
-        const blob = await response.blob();
-        const base64 = await new Promise((resolve) => {
-            const reader = new FileReader();
-            reader.onloadend = () => resolve(reader.result);
-            reader.readAsDataURL(blob);
-        });
-        
-        // Step 1: Analyze image
-        const analysis = await websim.chat.completions.create({
-            messages: [
-                {
-                    role: "user",
-                    content: [
-                        {
-                            type: "text",
-                            text: "Describe this image in detail for the purpose of generating a new image. Focus on the key visual elements, style, and composition."
-                        },
-                        {
-                            type: "image_url",
-                            image_url: { url: base64 }
-                        }
-                    ]
-                }
-            ]
-        });
-        
-        showLoading(resultDiv, 'Generating new image...');
-        
-        // Step 2: Generate new image
-        const newImage = await websim.imageGen({
-            prompt: analysis.content,
-            aspect_ratio: "16:9"
-        });
-        
-        state.lastGeneratedImage = newImage.url;
-        state.lastGeneratedText = `Image->Text->Image "${analysis.content}"`;
-        
-        resultDiv.innerHTML = `
-            <h3>Original Analysis:</h3>
-            <p style="text-align: left; white-space: pre-wrap; margin-bottom: 2rem;">${analysis.content}</p>
-            <h3>Generated Image:</h3>
-            <img src="${newImage.url}" alt="Generated from analysis" />
-            <button onclick="import('./utils.js').then(mod => mod.downloadImage('${newImage.url}', 'ai-chain-comment-image.png'))" class="primary-btn" style="display: inline-block; margin-top: 1rem;">Download</button>
-        `;
-    } catch (error) {
-        throw error;
-    }
-}
-
 export async function processComment() {
-    if (!state.selectedComment) {
+    if (!selectedComment) {
         alert('Please select a comment first');
         return;
     }
     
     const processType = document.getElementById('commentProcessType').value;
     const resultDiv = document.getElementById('commentResult');
-    showLoading(resultDiv);
+    resultDiv.innerHTML = '<div class="loading"></div>';
     
     try {
         switch(processType) {
             case 'image-to-text':
-                if (state.commentImages.length === 0) {
-                    alert('No images found in comment for Image → Text processing');
-                    return;
-                }
                 await processImageToText();
                 break;
-                
             case 'text-to-image':
                 await processTextToImage();
                 break;
-                
             case 'text-to-speech':
                 await processTextToSpeech();
                 break;
-                
             case 'chain':
-                if (state.commentImages.length === 0) {
-                    alert('No images found in comment for Image → Text → Image processing');
-                    return;
-                }
                 await processChain();
                 break;
         }
         
         document.getElementById('commentOutputBtn').style.display = 'inline-block';
     } catch (error) {
-        showError(resultDiv, error.message);
+        resultDiv.innerHTML = `<p style="color: red;">Error: ${error.message}</p>`;
         document.getElementById('commentOutputBtn').style.display = 'none';
     }
 }
 
-// Export functions for global access
-window.processComment = processComment;
+async function processImageToText() {
+    const resultDiv = document.getElementById('commentResult');
+    
+    if (commentImages.length === 0) {
+        throw new Error('No images found in comment for Image → Text processing');
+    }
+    
+    const imageUrl = commentImages[0];
+    const base64 = await reuploadImageFromUrl(imageUrl);
+    
+    const analysis = await analyzeImage({ 
+        imageUrl: base64,
+        prompt: "Describe this image in detail. Include what's visible, the style, colors, mood, and any interesting elements."
+    });
+    
+    setLastGenerated({
+        type: 'text',
+        text: `Image->Text "${analysis.content}"`
+    });
+    
+    resultDiv.innerHTML = `
+        <h3>Analysis:</h3>
+        <p style="text-align: left; white-space: pre-wrap;">${analysis.content}</p>
+    `;
+}
+
+async function processTextToImage() {
+    const prompt = selectedComment.raw_content || 'AI generated image from comment';
+    const resultDiv = document.getElementById('commentResult');
+    resultDiv.innerHTML = '<div class="loading"></div>';
+    
+    const result = await generateImage({ 
+        prompt: prompt,
+        aspectRatio: "16:9"
+    });
+    
+    setLastGenerated({
+        type: 'image',
+        url: result.url,
+        text: `Text->Image "${prompt}"`
+    });
+    
+    resultDiv.innerHTML = `
+        <img src="${result.url}" alt="Generated from comment" />
+        <button onclick="downloadImage('${result.url}', 'ai-comment-image.png')" class="primary-btn" style="display: inline-block; margin-top: 1rem;">Download</button>
+    `;
+}
+
+async function processTextToSpeech() {
+    const text = selectedComment.raw_content || 'No text provided';
+    const resultDiv = document.getElementById('commentResult');
+    resultDiv.innerHTML = '<div class="loading"></div>';
+    
+    const result = await generateSpeech({ 
+        text: text,
+        voice: 'en-male'
+    });
+    
+    setLastGenerated({
+        type: 'audio',
+        url: result.url,
+        text: `Text->Speech "${text}"`
+    });
+    
+    resultDiv.innerHTML = `
+        <audio controls>
+            <source src="${result.url}" type="audio/mpeg">
+            Your browser does not support the audio element.
+        </audio>
+        <button onclick="downloadAudio('${result.url}', 'comment-audio.mp3')" class="primary-btn" style="display: inline-block; margin-top: 1rem;">Download</button>
+    `;
+}
+
+async function processChain() {
+    const resultDiv = document.getElementById('commentResult');
+    resultDiv.innerHTML = '<div class="loading"></div><p>Analyzing image...</p>';
+    
+    if (commentImages.length === 0) {
+        throw new Error('No images found in comment for Image → Text → Image processing');
+    }
+    
+    const imageUrl = commentImages[0];
+    const base64 = await reuploadImageFromUrl(imageUrl);
+    
+    // Step 1: Analyze image
+    const analysis = await analyzeImage({ 
+        imageUrl: base64,
+        prompt: "Describe this image in detail for the purpose of generating a new image. Focus on the key visual elements, style, and composition."
+    });
+    
+    resultDiv.innerHTML = '<div class="loading"></div><p>Generating new image...</p>';
+    
+    // Step 2: Generate new image
+    const newImage = await generateImage({ 
+        prompt: analysis.content,
+        aspectRatio: "16:9"
+    });
+    
+    setLastGenerated({
+        type: 'image',
+        url: newImage.url,
+        text: `Image->Text->Image "${analysis.content}"`
+    });
+    
+    resultDiv.innerHTML = `
+        <h3>Original Analysis:</h3>
+        <p style="text-align: left; white-space: pre-wrap; margin-bottom: 2rem;">${analysis.content}</p>
+        <h3>Generated Image:</h3>
+        <img src="${newImage.url}" alt="Generated from analysis" />
+        <button onclick="downloadImage('${newImage.url}', 'ai-chain-comment-image.png')" class="primary-btn" style="display: inline-block; margin-top: 1rem;">Download</button>
+    `;
+}
+
+export async function handleComment(type) {
+    const lastGenerated = getLastGenerated();
+    
+    if (!lastGenerated.text) {
+        alert('No result to comment');
+        return;
+    }
+    
+    try {
+        await postComment({
+            content: lastGenerated.text,
+            images: lastGenerated.type === 'image' ? [lastGenerated.url] : []
+        });
+    } catch (error) {
+        console.error('Error posting comment:', error);
+        alert('Could not post comment. Please try again.');
+    }
+}

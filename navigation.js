@@ -1,25 +1,32 @@
-// Workflow navigation and switching logic
-import { state } from './state.js';
+import { loadComments } from './comments.js';
 
-export function initNavigation() {
-    document.querySelectorAll('.nav-btn').forEach(btn => {
-        btn.addEventListener('click', () => handleNavClick(btn));
-    });
-}
+export let currentWorkflow = 'text-to-image';
+export let uploadedImage = null;
+export let uploadedImage2 = null;
 
-function handleNavClick(btn) {
+export function switchWorkflow(btn) {
     document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
     
     document.querySelectorAll('.workflow').forEach(w => w.classList.remove('active'));
     document.getElementById(btn.dataset.workflow).classList.add('active');
     
-    state.currentWorkflow = btn.dataset.workflow;
+    currentWorkflow = btn.dataset.workflow;
     
     if (btn.dataset.workflow === 'comment-to-x') {
-        import('./comments.js').then(module => module.loadComments());
+        loadComments();
     }
 }
 
-// Export for backward compatibility
-window.originalNavClick = handleNavClick;
+export function getCurrentWorkflow() {
+    return currentWorkflow;
+}
+
+export function setUploadedImage(image) {
+    uploadedImage = image;
+}
+
+export function setUploadedImage2(image) {
+    uploadedImage2 = image;
+}
+

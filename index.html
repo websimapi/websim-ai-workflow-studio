@@ -166,44 +166,7 @@
         }
     }
     </script>
-    
-    <!-- New modular structure -->
-    <script type="module">
-        import { initNavigation } from './navigation.js';
-        import { generateImage } from './workflows/textToImage.js';
-        import { generateSpeech } from './workflows/textToSpeech.js';
-        import { handleImageUpload, analyzeImage } from './workflows/imageToText.js';
-        import { handleChainUpload, startChain } from './workflows/chain.js';
-        import { handleCombineUpload, combineImages } from './workflows/combine.js';
-        import { commentResult } from './comments.js';
-        
-        // Initialize
-        initNavigation();
-        
-        // Export functions to global scope for inline onclick handlers
-        window.generateImage = generateImage;
-        window.generateSpeech = generateSpeech;
-        window.handleImageUpload = handleImageUpload;
-        window.analyzeImage = analyzeImage;
-        window.handleChainUpload = handleChainUpload;
-        window.startChain = startChain;
-        window.handleCombineUpload = handleCombineUpload;
-        window.combineImages = combineImages;
-        window.commentResult = commentResult;
-        
-        // Initialize weight slider
-        document.addEventListener('DOMContentLoaded', () => {
-            const slider = document.getElementById('weightSlider');
-            const display = document.getElementById('weightDisplay');
-            
-            if (slider) {
-                slider.addEventListener('input', (e) => {
-                    const value = e.target.value;
-                    display.textContent = `${value}% Image 1 / ${100-value}% Image 2`;
-                });
-            }
-        });
-    </script>
+    <script src="app.js"></script>
 <script defer src="https://static.cloudflareinsights.com/beacon.min.js/v8c78df7c7c0f484497ecbca7046644da1771523124516" integrity="sha512-8DS7rgIrAmghBFwoOTujcf6D9rXvH8xm8JQ1Ja01h9QX8EzXldiszufYa4IFfKdLUKTTrnSFXLDkUEOTrZQ8Qg==" data-cf-beacon='{"version":"2024.11.0","token":"4c6229722a6346bc8eb5cb0e5eae5d41","server_timing":{"name":{"cfCacheStatus":true,"cfEdge":true,"cfExtPri":true,"cfL4":true,"cfOrigin":true,"cfSpeedBrain":true},"location_startswith":null}}' crossorigin="anonymous"></script>
 </body>
 </html>
