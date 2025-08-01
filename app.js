@@ -559,6 +559,13 @@ async function processImageToText() {
     try {
         console.log('Processing Image→Text with URL:', imageUrl);
         
+        // Download and re-upload the image to get a valid websim URL
+        const response = await fetch(imageUrl);
+        const blob = await response.blob();
+        const uploadedImageUrl = await websim.upload(blob);
+        
+        console.log('Re-uploaded image URL:', uploadedImageUrl);
+        
         const completion = await websim.chat.completions.create({
             messages: [
                 {
@@ -570,7 +577,7 @@ async function processImageToText() {
                         },
                         {
                             type: "image_url",
-                            image_url: { url: imageUrl }
+                            image_url: { url: uploadedImageUrl }
                         }
                     ]
                 }
@@ -595,7 +602,7 @@ async function processImageToText() {
             stack: error.stack,
             imageUrl: imageUrl
         });
-        throw new Error(`Image analysis failed: ${error.message}`);
+        throw error;
     }
 }
 
@@ -674,6 +681,13 @@ async function processChain() {
     try {
         console.log('Processing Image→Text→Image with URL:', imageUrl);
         
+        // Download and re-upload the image to get a valid websim URL
+        const response = await fetch(imageUrl);
+        const blob = await response.blob();
+        const uploadedImageUrl = await websim.upload(blob);
+        
+        console.log('Re-uploaded image URL:', uploadedImageUrl);
+        
         // Step 1: Analyze image
         const analysis = await websim.chat.completions.create({
             messages: [
@@ -686,7 +700,7 @@ async function processChain() {
                         },
                         {
                             type: "image_url",
-                            image_url: { url: imageUrl }
+                            image_url: { url: uploadedImageUrl }
                         }
                     ]
                 }
@@ -721,7 +735,7 @@ async function processChain() {
             stack: error.stack,
             imageUrl: imageUrl
         });
-        throw new Error(`Chain processing failed: ${error.message}`);
+        throw error;
     }
 }
 
