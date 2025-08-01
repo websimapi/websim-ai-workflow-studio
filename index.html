@@ -16,11 +16,9 @@
         <nav class="workflow-nav">
             <button class="nav-btn active" data-workflow="text-to-image">Text → Image</button>
             <button class="nav-btn" data-workflow="text-to-speech">Text → Speech</button>
-            <button class="nav-btn" data-workflow="speech-to-text-x">Speech → Text → X</button>
             <button class="nav-btn" data-workflow="image-to-text">Image → Text</button>
             <button class="nav-btn" data-workflow="chain">Image → Text → Image</button>
             <button class="nav-btn" data-workflow="combine">Combine Images</button>
-            <button class="nav-btn" data-workflow="comment-to-x">Comment → X</button>
         </nav>
 
         <main>
@@ -45,7 +43,6 @@
                     <button onclick="generateImage()" class="primary-btn">Generate Image</button>
                 </div>
                 <div id="imageResult" class="result-area"></div>
-                <button id="commentImageBtn" onclick="commentResult('image')" class="secondary-btn" style="display: none; margin-top: 1rem;"> Post as Comment</button>
             </section>
 
             <!-- Text to Speech Workflow -->
@@ -66,44 +63,6 @@
                     <button onclick="generateSpeech()" class="primary-btn">Generate Speech</button>
                 </div>
                 <div id="speechResult" class="result-area"></div>
-                <button id="commentSpeechBtn" onclick="commentResult('speech')" class="secondary-btn" style="display: none; margin-top: 1rem;"> Post as Comment</button>
-            </section>
-
-            <!-- Speech to Text X Workflow -->
-            <section id="speech-to-text-x" class="workflow">
-                <h2>Speech → Text → X</h2>
-                <div class="input-group">
-                    <p>Speak into your microphone - recording will start automatically when you navigate to this tab</p>
-                    
-                    <div style="text-align: center; margin: 2rem 0;">
-                        <button id="startRecording" class="primary-btn" onclick="startRecording()">
-                            🎤 Start Recording
-                        </button>
-                        <button id="stopRecording" class="primary-btn" style="display: none; background: #ff6b6b;" onclick="stopRecording()">
-                            ⏹ Stop Recording
-                        </button>
-                    </div>
-                    
-                    <div id="recordingStatus" style="text-align: center; margin: 1rem 0; font-style: italic; color: #666;"></div>
-                    
-                    <textarea id="speechToTextResult" placeholder="Your speech will appear here automatically after you finish speaking..." rows="4"></textarea>
-                    
-                    <div class="options">
-                        <label>Auto-process as:
-                            <select id="speechProcessType">
-                                <option value="text-to-image">Text → Image</option>
-                                <option value="text-to-speech">Text → Speech</option>
-                                <option value="image-to-text">Image → Text (requires image upload)</option>
-                                <option value="chain">Image → Text → Image (requires image upload)</option>
-                                <option value="combine">Combine Images (requires image uploads)</option>
-                            </select>
-                        </label>
-                    </div>
-                    
-                    <button id="processSpeechBtn" onclick="processSpeechText()" class="primary-btn" disabled>Process Text</button>
-                </div>
-                <div id="speechTextResult" class="result-area"></div>
-                <button id="commentSpeechTextBtn" onclick="commentResult('speech-to-text-x')" class="secondary-btn" style="display: none; margin-top: 1rem;">Post as Comment</button>
             </section>
 
             <!-- Image to Text Workflow -->
@@ -115,7 +74,6 @@
                     <button onclick="analyzeImage()" class="primary-btn" id="analyzeBtn" disabled>Analyze Image</button>
                 </div>
                 <div id="textResult" class="result-area"></div>
-                <button id="commentTextBtn" onclick="commentResult('text')" class="secondary-btn" style="display: none; margin-top: 1rem;"> Post as Comment</button>
             </section>
 
             <!-- Chain Workflow -->
@@ -128,7 +86,6 @@
                     <button onclick="startChain()" class="primary-btn" id="chainBtn" disabled>Start Chain</button>
                 </div>
                 <div id="chainResult" class="result-area"></div>
-                <button id="commentChainBtn" onclick="commentResult('chain')" class="secondary-btn" style="display: none; margin-top: 1rem;"> Post as Comment</button>
             </section>
 
             <!-- Combine Images Workflow -->
@@ -157,41 +114,6 @@
                     <button onclick="combineImages()" class="primary-btn" id="combineBtn" disabled>Combine Images</button>
                 </div>
                 <div id="combineResult" class="result-area"></div>
-                <button id="commentCombineBtn" onclick="commentResult('combine')" class="secondary-btn" style="display: none; margin-top: 1rem;"> Post as Comment</button>
-            </section>
-
-            <!-- Comment to X Workflow -->
-            <section id="comment-to-x" class="workflow">
-                <h2>Comment → X</h2>
-                <div class="input-group">
-                    <p>Select a comment to use as input for AI workflows</p>
-                    <div id="commentsList" class="comments-list">
-                        <div class="loading">Loading comments...</div>
-                    </div>
-                </div>
-                
-                <div id="commentSelected" style="display: none;">
-                    <div class="comment-preview">
-                        <div id="commentContent"></div>
-                        <div id="commentImages"></div>
-                    </div>
-                    
-                    <div class="options">
-                        <label>Process as:
-                            <select id="commentProcessType">
-                                <option value="image-to-text">Image → Text</option>
-                                <option value="text-to-image">Text → Image</option>
-                                <option value="text-to-speech">Text → Speech</option>
-                                <option value="chain">Image → Text → Image</option>
-                            </select>
-                        </label>
-                    </div>
-                    
-                    <button onclick="processComment()" class="primary-btn">Process</button>
-                </div>
-                
-                <div id="commentResult" class="result-area"></div>
-                <button id="commentOutputBtn" onclick="commentResult('comment-to-x')" class="secondary-btn" style="display: none; margin-top: 1rem;"> Post as Comment</button>
             </section>
         </main>
     </div>
@@ -204,11 +126,7 @@
         }
     }
     </script>
-    <script type="module" src="utils.js"></script>
-    <script type="module" src="workflows.js"></script>
-    <script type="module" src="comments.js"></script>
-    <script type="module" src="navigation.js"></script>
-    <script type="module" src="app.js"></script>
+    <script src="app.js"></script>
 <script defer src="https://static.cloudflareinsights.com/beacon.min.js/v8c78df7c7c0f484497ecbca7046644da1771523124516" integrity="sha512-8DS7rgIrAmghBFwoOTujcf6D9rXvH8xm8JQ1Ja01h9QX8EzXldiszufYa4IFfKdLUKTTrnSFXLDkUEOTrZQ8Qg==" data-cf-beacon='{"version":"2024.11.0","token":"4c6229722a6346bc8eb5cb0e5eae5d41","server_timing":{"name":{"cfCacheStatus":true,"cfEdge":true,"cfExtPri":true,"cfL4":true,"cfOrigin":true,"cfSpeedBrain":true},"location_startswith":null}}' crossorigin="anonymous"></script>
 </body>
 </html>
