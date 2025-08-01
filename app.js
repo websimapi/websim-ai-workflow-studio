@@ -39,7 +39,7 @@ async function generateImage() {
         
         resultDiv.innerHTML = `
             <img src="${result.url}" alt="Generated image" />
-            <a href="${result.url}" download="ai-generated-image.png" class="primary-btn" style="display: inline-block; margin-top: 1rem;" download>Download</a>
+            <button onclick="downloadFile('${result.url}', 'generated-image')" class="primary-btn" style="display: inline-block; margin-top: 1rem;">Download</button>
         `;
     } catch (error) {
         resultDiv.innerHTML = `<p style="color: red;">Error: ${error.message}</p>`;
@@ -70,7 +70,7 @@ async function generateSpeech() {
                 <source src="${result.url}" type="audio/mpeg">
                 Your browser does not support the audio element.
             </audio>
-            <a href="${result.url}" download="${text.substring(0, 20).replace(/[^a-zA-Z0-9]/g, '_')}.mp3" class="primary-btn" style="display: inline-block; margin-top: 1rem;" download>Download</a>
+            <button onclick="downloadFile('${result.url}', '${text.substring(0, 20).replace(/[^a-zA-Z0-9]/g, '')}')" class="primary-btn" style="display: inline-block; margin-top: 1rem;">Download</button>
         `;
     } catch (error) {
         resultDiv.innerHTML = `<p style="color: red;">Error: ${error.message}</p>`;
@@ -184,7 +184,7 @@ async function startChain() {
             <p style="text-align: left; white-space: pre-wrap; margin-bottom: 2rem;">${analysis.content}</p>
             <h3>Generated Image:</h3>
             <img src="${newImage.url}" alt="Generated from analysis" />
-            <a href="${newImage.url}" download="chained-image.png" class="primary-btn" style="display: inline-block; margin-top: 1rem;" download>Download</a>
+            <button onclick="downloadFile('${newImage.url}', 'chain-generated-image')" class="primary-btn" style="display: inline-block; margin-top: 1rem;">Download</button>
         `;
     } catch (error) {
         resultDiv.innerHTML = `<p style="color: red;">Error: ${error.message}</p>`;
@@ -257,9 +257,23 @@ async function combineImages() {
             <p style="text-align: left; white-space: pre-wrap; margin-bottom: 2rem;">${analysis.content}</p>
             <h3>Combined Result:</h3>
             <img src="${combinedImage.url}" alt="Combined image" />
-            <a href="${combinedImage.url}" download="combined-image.png" class="primary-btn" style="display: inline-block; margin-top: 1rem;" download>Download</a>
+            <button onclick="downloadFile('${combinedImage.url}', 'combined-image')" class="primary-btn" style="display: inline-block; margin-top: 1rem;">Download</button>
         `;
     } catch (error) {
         resultDiv.innerHTML = `<p style="color: red;">Error: ${error.message}</p>`;
     }
+}
+
+// Add download utility function
+function downloadFile(url, filename) {
+    // Create a temporary anchor element
+    const anchor = document.createElement('a');
+    anchor.href = url;
+    anchor.download = filename;
+    anchor.style.display = 'none';
+    
+    // Add to DOM, trigger click, then remove
+    document.body.appendChild(anchor);
+    anchor.click();
+    document.body.removeChild(anchor);
 }
