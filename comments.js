@@ -143,6 +143,51 @@ export function selectComment(comment, imageUrls) {
     }
 }
 
+export async function processComment() {
+    const { selectedComment, commentImages } = getAppState();
+    if (!selectedComment) {
+        alert('Please select a comment first');
+        return;
+    }
+    
+    const processType = document.getElementById('commentProcessType').value;
+    const resultDiv = document.getElementById('commentResult');
+    resultDiv.innerHTML = '<div class="loading"></div>';
+    
+    try {
+        switch(processType) {
+            case 'image-to-text':
+                if (commentImages.length === 0) {
+                    alert('No images found in comment for Image → Text processing');
+                    return;
+                }
+                await processImageToText();
+                break;
+                
+            case 'text-to-image':
+                await processTextToImage();
+                break;
+                
+            case 'text-to-speech':
+                await processTextToSpeech();
+                break;
+                
+            case 'chain':
+                if (commentImages.length === 0) {
+                    alert('No images found in comment for Image → Text → Image processing');
+                    return;
+                }
+                await processChain();
+                break;
+        }
+        
+        document.getElementById('commentOutputBtn').style.display = 'inline-block';
+    } catch (error) {
+        resultDiv.innerHTML = `<p style="color: red;">Error: ${error.message}</p>`;
+        document.getElementById('commentOutputBtn').style.display = 'none';
+    }
+}
+
 // Process functions for comment to X
 async function processImageToText() {
     const { commentImages } = getAppState();
@@ -296,39 +341,8 @@ async function processChain() {
     }
 }
 
-// Update functions available globally for HTML onclick handlers
-window.commentResult = commentResult;
-window.loadComments = loadComments;
-window.selectComment = selectComment;
-window.processComment = processComment;
-
 // Make functions available globally for HTML onclick handlers
 window.commentResult = commentResult;
 window.loadComments = loadComments;
 window.selectComment = selectComment;
 window.processComment = processComment;
-
-async function processComplexComment(text, images, resultDiv) {
-    const analysis = await websim.chat.completions.create({
-        messages: [
-            {
-                role: "system",
-                content: `Analyze comment text for complex AI workflows. Handle requests like "analyze this image then create a new one" or multi-step processes.`
-            },
-            {
-                role: "user",
-                content: text || "Process this comment"
-            }
-        ]
-    });
-    
-    // Execute the determined workflow
-    const steps = analysis.content.toLowerCase().includes('image') && images.length > 0 ? 
-        ['image-to-text', 'text-to-image'] : ['text-to-image'];
-    
-    await executeMultiStepWorkflow(
-        { workflow: 'complex', steps: steps, prompt: text },
-        text,
-        resultDiv
-    );
-}
