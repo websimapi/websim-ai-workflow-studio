@@ -412,7 +412,6 @@ export function stopRecording() {
 // Enhanced processSpeechText with better handling
 export async function processSpeechText() {
     const text = document.getElementById('speechToTextResult').value;
-    const processType = document.getElementById('speechProcessType').value;
     
     if (!text.trim()) {
         alert('Please speak some text first');
@@ -420,33 +419,40 @@ export async function processSpeechText() {
     }
     
     const resultDiv = document.getElementById('speechTextResult');
-    resultDiv.innerHTML = '<div class="loading"></div>';
+    resultDiv.innerHTML = '<div class="loading"></div><p>AI analyzing your request...</p>';
     
     try {
-        // Auto-select the process type based on context
-        let autoProcessType = processType;
+        // AI determines what to do based on the spoken content
+        const analysis = await websim.chat.completions.create({
+            messages: [
+                {
+                    role: "system",
+                    content: `Analyze the user's request and determine the best workflow. Consider:
+1. Text-to-image: If they mention generating, creating, making, or want something visual
+2. Text-to-speech: If they mention audio, voice, speaking, or want to hear something
+3. Image-to-text: If they mention analyzing, describing, or have an image context
+4. Chain: If they mention transforming or converting between modalities
+
+Return ONLY the workflow name: text-to-image OR text-to-speech OR explain-not-supported`
+                },
+                {
+                    role: "user",
+                    content: text
+                }
+            ]
+        });
         
-        // If the text mentions needing an image or visual analysis, switch to text-to-image
-        if (text.toLowerCase().includes('image') || text.toLowerCase().includes('picture') || text.toLowerCase().includes('photo')) {
-            autoProcessType = 'text-to-image';
-        }
+        const determinedWorkflow = analysis.content.toLowerCase().trim();
         
-        switch(autoProcessType) {
-            case 'text-to-image':
-                await processSpeechToImage(text);
-                break;
-            case 'text-to-speech':
-                await processSpeechToSpeech(text);
-                break;
-            case 'image-to-text':
-                resultDiv.innerHTML = '<p style="color: #666;">Switch to Image → Text workflow for image analysis</p>';
-                return;
-            case 'chain':
-                resultDiv.innerHTML = '<p style="color: #666;">Switch to Image → Text → Image workflow for chain processing</p>';
-                return;
-            case 'combine':
-                resultDiv.innerHTML = '<p style="color: #666;">Switch to Combine Images workflow for combining images</p>';
-                return;
+        if (determinedWorkflow.includes('text-to-image')) {
+            await processSpeechToImage(text);
+        } else if (determinedWorkflow.includes('text-to-speech')) {
+            await processSpeechToSpeech(text);
+        } else if (determinedWorkflow.includes('explain-not-supported')) {
+            resultDiv.innerHTML = '<p>Based on your request, please:</p><ul><li>Switch to Image tab to analyze images</li><li>Switch to Chain tab for image transformations</li><li>Or ask for text/image generation directly</li></ul>';
+        } else {
+            // Default to text-to-image
+            await processSpeechToImage(text);
         }
         
         document.getElementById('commentSpeechTextBtn').style.display = 'inline-block';

@@ -193,8 +193,15 @@ async function processImageToText() {
     const { commentImages } = getAppState();
     const resultDiv = document.getElementById('commentResult');
     
+    if (!commentImages.length) {
+        alert('No images found in comment');
+        return;
+    }
+    
     try {
         const imageUrl = commentImages[0];
+        
+        // Ensure CORS-safe handling
         const base64 = await convertImageToBase64(imageUrl);
         
         const analysis = await websim.chat.completions.create({
