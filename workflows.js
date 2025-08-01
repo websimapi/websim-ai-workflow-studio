@@ -327,6 +327,174 @@ Write as if you're a photographer describing a scene to another artist who needs
     }
 }
 
+// Speech to Text functionality
+export function startRecording() {
+    const state = getAppState();
+    
+    if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+        alert('Speech recognition is not supported in your browser. Please use Chrome, Edge, or Safari.');
+        return;
+    }
+    
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    const recognition = new SpeechRecognition();
+    
+    recognition.continuous = true;
+    recognition.interimResults = true;
+    recognition.lang = 'en-US';
+    
+    recognition.onstart = () => {
+        updateAppState({ isRecording: true });
+        document.getElementById('startRecording').style.display = 'none';
+        document.getElementById('stopRecording').style.display = 'inline-block';
+        document.getElementById('recordingStatus').textContent = 'Listening...';
+    };
+    
+    recognition.onresult = (event) => {
+        let finalTranscript = '';
+        let interimTranscript = '';
+        
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+            const transcript = event.results[i][0].transcript;
+            if (event.results[i].isFinal) {
+                finalTranscript += transcript + ' ';
+            } else {
+                interimTranscript += transcript;
+            }
+        }
+        
+        const textarea = document.getElementById('speechToTextResult');
+        if (finalTranscript) {
+            textarea.value += finalTranscript;
+            updateAppState({ speechText: textarea.value });
+            document.getElementById('processSpeechBtn').disabled = false;
+        }
+        textarea.value = textarea.value.replace(interimTranscript, '') + interimTranscript;
+    };
+    
+    recognition.onerror = (event) => {
+        console.error('Speech recognition error:', event.error);
+        document.getElementById('recordingStatus').textContent = `Error: ${event.error}`;
+        stopRecording();
+    };
+    
+    recognition.onend = () => {
+        if (getAppState().isRecording) {
+            recognition.start(); // Restart if still supposed to be recording
+        }
+    };
+    
+    updateAppState({ speechRecognizer: recognition });
+    recognition.start();
+}
+
+export function stopRecording() {
+    const { speechRecognizer, isRecording } = getAppState();
+    
+    if (!isRecording || !speechRecognizer) return;
+    
+    speechRecognizer.stop();
+    updateAppState({ isRecording: false, speechRecognizer: null });
+    
+    document.getElementById('startRecording').style.display = 'inline-block';
+    document.getElementById('stopRecording').style.display = 'none';
+    document.getElementById('recordingStatus').textContent = 'Recording stopped';
+}
+
+export async function processSpeechText() {
+    const text = document.getElementById('speechToTextResult').value;
+    const processType = document.getElementById('speechProcessType').value;
+    
+    if (!text.trim()) {
+        alert('Please speak some text first');
+        return;
+    }
+    
+    const resultDiv = document.getElementById('speechTextResult');
+    resultDiv.innerHTML = '<div class="loading"></div>';
+    
+    try {
+        switch(processType) {
+            case 'text-to-image':
+                await processSpeechToImage(text);
+                break;
+            case 'text-to-speech':
+                await processSpeechToSpeech(text);
+                break;
+            case 'image-to-text':
+                alert('Please upload an image first, then use Image → Text workflow');
+                resultDiv.innerHTML = '<p style="color: #666;">Please use Image → Text workflow for image analysis</p>';
+                return;
+            case 'chain':
+                alert('Please upload an image first, then use Image → Text → Image workflow');
+                resultDiv.innerHTML = '<p style="color: #666;">Please use Image → Text → Image workflow</p>';
+                return;
+            case 'combine':
+                alert('Please upload images first, then use Combine Images workflow');
+                resultDiv.innerHTML = '<p style="color: #666;">Please use Combine Images workflow</p>';
+                return;
+        }
+        
+        document.getElementById('commentSpeechTextBtn').style.display = 'inline-block';
+    } catch (error) {
+        resultDiv.innerHTML = `<p style="color: red;">Error: ${error.message}</p>`;
+        document.getElementById('commentSpeechTextBtn').style.display = 'none';
+    }
+}
+
+async function processSpeechToImage(text) {
+    const resultDiv = document.getElementById('speechTextResult');
+    
+    try {
+        const result = await websim.imageGen({
+            prompt: text,
+            aspect_ratio: "16:9"
+        });
+        
+        updateAppState({
+            lastGeneratedImage: result.url,
+            lastGeneratedText: `Speech->Text->Image "${text}"`
+        });
+        
+        resultDiv.innerHTML = `
+            <h3>Generated from speech:</h3>
+            <p style="font-style: italic; color: #666; margin-bottom: 1rem;">"${text}"</p>
+            <img src="${result.url}" alt="Generated from speech" />
+            <button onclick="downloadImage('${result.url}', 'ai-speech-image.png')" class="primary-btn" style="display: inline-block; margin-top: 1rem;">Download</button>
+        `;
+    } catch (error) {
+        throw error;
+    }
+}
+
+async function processSpeechToSpeech(text) {
+    const resultDiv = document.getElementById('speechTextResult');
+    
+    try {
+        const result = await websim.textToSpeech({
+            text: text,
+            voice: 'en-male'
+        });
+        
+        updateAppState({
+            lastGeneratedAudio: result.url,
+            lastGeneratedText: `Speech->Text->Speech "${text}"`
+        });
+        
+        resultDiv.innerHTML = `
+            <h3>Speech converted to text, then back to speech:</h3>
+            <p style="font-style: italic; color: #666; margin-bottom: 1rem;">"${text}"</p>
+            <audio controls>
+                <source src="${result.url}" type="audio/mpeg">
+                Your browser does not support the audio element.
+            </audio>
+            <button onclick="downloadAudio('${result.url}', 'ai-speech-conversion.mp3')" class="primary-btn" style="display: inline-block; margin-top: 1rem;">Download</button>
+        `;
+    } catch (error) {
+        throw error;
+    }
+}
+
 // Make functions available globally for HTML onclick handlers
 window.generateImage = generateImage;
 window.generateSpeech = generateSpeech;
@@ -338,3 +506,8 @@ window.handleCombineUpload = handleCombineUpload;
 window.combineImages = combineImages;
 window.downloadImage = downloadImage;
 window.downloadAudio = downloadAudio;
+
+// Make new functions available globally
+window.startRecording = startRecording;
+window.stopRecording = stopRecording;
+window.processSpeechText = processSpeechText;

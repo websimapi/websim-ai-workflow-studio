@@ -16,6 +16,7 @@
         <nav class="workflow-nav">
             <button class="nav-btn active" data-workflow="text-to-image">Text → Image</button>
             <button class="nav-btn" data-workflow="text-to-speech">Text → Speech</button>
+            <button class="nav-btn" data-workflow="speech-to-text-x">Speech → Text → X</button>
             <button class="nav-btn" data-workflow="image-to-text">Image → Text</button>
             <button class="nav-btn" data-workflow="chain">Image → Text → Image</button>
             <button class="nav-btn" data-workflow="combine">Combine Images</button>
@@ -66,6 +67,43 @@
                 </div>
                 <div id="speechResult" class="result-area"></div>
                 <button id="commentSpeechBtn" onclick="commentResult('speech')" class="secondary-btn" style="display: none; margin-top: 1rem;"> Post as Comment</button>
+            </section>
+
+            <!-- Speech to Text X Workflow -->
+            <section id="speech-to-text-x" class="workflow">
+                <h2>Speech → Text → X</h2>
+                <div class="input-group">
+                    <p>Speak into your microphone and convert speech to text, then process through any workflow</p>
+                    
+                    <div style="text-align: center; margin: 2rem 0;">
+                        <button id="startRecording" class="primary-btn" onclick="startRecording()">
+                            🎤 Start Recording
+                        </button>
+                        <button id="stopRecording" class="primary-btn" style="display: none; background: #ff6b6b;" onclick="stopRecording()">
+                            ⏹ Stop Recording
+                        </button>
+                    </div>
+                    
+                    <div id="recordingStatus" style="text-align: center; margin: 1rem 0; font-style: italic; color: #666;"></div>
+                    
+                    <textarea id="speechToTextResult" placeholder="Your speech will appear here..." rows="4"></textarea>
+                    
+                    <div class="options">
+                        <label>Process as:
+                            <select id="speechProcessType">
+                                <option value="text-to-image">Text → Image</option>
+                                <option value="text-to-speech">Text → Speech</option>
+                                <option value="image-to-text">Image → Text (requires image upload)</option>
+                                <option value="chain">Image → Text → Image (requires image upload)</option>
+                                <option value="combine">Combine Images (requires image uploads)</option>
+                            </select>
+                        </label>
+                    </div>
+                    
+                    <button id="processSpeechBtn" onclick="processSpeechText()" class="primary-btn" disabled>Process Text</button>
+                </div>
+                <div id="speechTextResult" class="result-area"></div>
+                <button id="commentSpeechTextBtn" onclick="commentResult('speech-to-text-x')" class="secondary-btn" style="display: none; margin-top: 1rem;">Post as Comment</button>
             </section>
 
             <!-- Image to Text Workflow -->

@@ -10,7 +10,10 @@ let appState = {
     lastGeneratedText: null,
     lastGeneratedAudio: null,
     selectedComment: null,
-    commentImages: []
+    commentImages: [],
+    speechRecognizer: null,
+    isRecording: false,
+    speechText: ''
 };
 
 // State management functions
