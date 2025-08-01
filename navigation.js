@@ -41,17 +41,3 @@ function handleNavClick(btn) {
         }, 300);
     }
 }
-
-// Make stopRecording available globally for HTML onclick handlers
-window.stopRecording = window.stopRecording || function() {
-    const { speechRecognizer, isRecording } = getAppState();
-    
-    if (!isRecording || !speechRecognizer) return;
-    
-    speechRecognizer.stop();
-    updateAppState({ isRecording: false, speechRecognizer: null });
-    
-    document.getElementById('startRecording').style.display = 'inline-block';
-    document.getElementById('stopRecording').style.display = 'none';
-    document.getElementById('recordingStatus').textContent = 'Processing...';
-};
