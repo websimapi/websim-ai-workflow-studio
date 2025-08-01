@@ -1,51 +1,35 @@
+// Navigation and workflow switching
 import { loadComments } from './comments.js';
+import { getAppState, updateAppState } from './app.js';
 
-// Initialize navigation
 export function initNavigation() {
+    // Override nav buttons
     document.querySelectorAll('.nav-btn').forEach(btn => {
-        btn.addEventListener('click', () => switchWorkflow(btn));
+        btn.addEventListener('click', () => handleNavClick(btn));
     });
-}
-
-export function switchWorkflow(btn) {
-    if (!btn) return;
     
-    // Remove active class from all buttons
-    document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
-    btn.classList.add('active');
+    // Initialize weight slider
+    const slider = document.getElementById('weightSlider');
+    const display = document.getElementById('weightDisplay');
     
-    // Hide all workflows
-    document.querySelectorAll('.workflow').forEach(w => w.classList.remove('active'));
-    
-    // Show selected workflow
-    const targetId = btn.dataset.workflow;
-    const targetWorkflow = document.getElementById(targetId);
-    if (targetWorkflow) {
-        targetWorkflow.classList.add('active');
-        
-        // Load comments if switching to comment-to-x
-        if (targetId === 'comment-to-x') {
-            loadComments();
-        }
+    if (slider) {
+        slider.addEventListener('input', (e) => {
+            const value = e.target.value;
+            display.textContent = `${value}% Image 1 / ${100-value}% Image 2`;
+        });
     }
 }
 
-// Export current state
-export let currentWorkflow = 'text-to-image';
-
-export let uploadedImage = null;
-export let uploadedImage2 = null;
-
-export function getCurrentWorkflow() {
-    return currentWorkflow;
-}
-
-export function setUploadedImage(image) {
-    uploadedImage = image;
-    window.uploadedImage = image; // Make sure it's available globally
-}
-
-export function setUploadedImage2(image) {
-    uploadedImage2 = image;
-    window.uploadedImage2 = image; // Make sure it's available globally
+function handleNavClick(btn) {
+    document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    
+    document.querySelectorAll('.workflow').forEach(w => w.classList.remove('active'));
+    document.getElementById(btn.dataset.workflow).classList.add('active');
+    
+    updateAppState({ currentWorkflow: btn.dataset.workflow });
+    
+    if (btn.dataset.workflow === 'comment-to-x') {
+        loadComments();
+    }
 }
