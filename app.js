@@ -361,23 +361,69 @@ async function commentResult(type) {
     switch(type) {
         case 'image':
             content = lastGeneratedText || 'AI generated image';
-            if (lastGeneratedImage) images = [lastGeneratedImage];
+            if (lastGeneratedImage) {
+                try {
+                    console.log('Re-uploading image before posting comment...');
+                    const response = await fetch(lastGeneratedImage);
+                    const blob = await response.blob();
+                    const uploadedUrl = await websim.upload(blob);
+                    const imageId = extractImageIdFromUrl(uploadedUrl);
+                    content += `\n\n[Image:${imageId}]`;
+                    images = [uploadedUrl];
+                } catch (error) {
+                    console.error('Error re-uploading image:', error);
+                    content += `\n\n[Unable to upload image]`;
+                }
+            }
             break;
         case 'speech':
             content = lastGeneratedText || 'AI generated speech';
-            if (lastGeneratedAudio) content += `\n\n[Audio: ${lastGeneratedAudio}]`;
+            if (lastGeneratedAudio) content += `\n\n[Audio:${lastGeneratedAudio}]`;
             break;
         case 'text':
             content = lastGeneratedText || 'AI generated text analysis';
-            if (lastGeneratedImage) images = [lastGeneratedImage];
+            if (lastGeneratedImage) {
+                try {
+                    const response = await fetch(lastGeneratedImage);
+                    const blob = await response.blob();
+                    const uploadedUrl = await websim.upload(blob);
+                    const imageId = extractImageIdFromUrl(uploadedUrl);
+                    content += `\n\n[Image:${imageId}]`;
+                    images = [uploadedUrl];
+                } catch (error) {
+                    console.error('Error re-uploading image:', error);
+                }
+            }
             break;
         case 'chain':
             content = lastGeneratedText || 'AI chain workflow result';
-            if (lastGeneratedImage) images = [lastGeneratedImage];
+            if (lastGeneratedImage) {
+                try {
+                    const response = await fetch(lastGeneratedImage);
+                    const blob = await response.blob();
+                    const uploadedUrl = await websim.upload(blob);
+                    const imageId = extractImageIdFromUrl(uploadedUrl);
+                    content += `\n\n[Image:${imageId}]`;
+                    images = [uploadedUrl];
+                } catch (error) {
+                    console.error('Error re-uploading image:', error);
+                }
+            }
             break;
         case 'combine':
             content = lastGeneratedText || 'AI combined images result';
-            if (lastGeneratedImage) images = [lastGeneratedImage];
+            if (lastGeneratedImage) {
+                try {
+                    const response = await fetch(lastGeneratedImage);
+                    const blob = await response.blob();
+                    const uploadedUrl = await websim.upload(blob);
+                    const imageId = extractImageIdFromUrl(uploadedUrl);
+                    content += `\n\n[Image:${imageId}]`;
+                    images = [uploadedUrl];
+                } catch (error) {
+                    console.error('Error re-uploading image:', error);
+                }
+            }
             break;
     }
     
@@ -397,72 +443,32 @@ async function commentResult(type) {
     }
 }
 
-// Comment to X functionality
-async function loadComments() {
-    const commentsDiv = document.getElementById('commentsList');
-    
-    try {
-        const project = await window.websim.getCurrentProject();
-        const response = await fetch(`/api/v1/projects/${project.id}/comments`);
-        const data = await response.json();
-        
-        if (!data.comments?.data?.length) {
-            commentsDiv.innerHTML = '<p style="text-align: center; color: #666;">No comments found</p>';
-            return;
-        }
-        
-        commentsDiv.innerHTML = '';
-        
-        data.comments.data.forEach(item => {
-            const comment = item.comment;
-            const div = document.createElement('div');
-            div.className = 'comment-item';
-            div.dataset.commentId = comment.id;
-            
-            // Extract images from raw_content markdown
-            let imageUrls = [];
-            if (comment.raw_content) {
-                imageUrls = extractImageUrlsFromMarkdown(comment.raw_content);
-            }
-            
-            let content = `
-                <div class="comment-author">${comment.author.username}</div>
-                <div class="comment-text">${comment.raw_content || 'No text'}</div>
-            `;
-            
-            if (imageUrls.length > 0) {
-                content += '<div class="comment-images">';
-                imageUrls.forEach(url => {
-                    content += `<img src="${url}" alt="Comment image" />`;
-                });
-                content += '</div>';
-            }
-            
-            content += `<div class="comment-meta">Posted ${new Date().toLocaleDateString()}</div>`;
-            
-            div.innerHTML = content;
-            div.addEventListener('click', () => selectComment(comment, imageUrls));
-            commentsDiv.appendChild(div);
-        });
-        
-    } catch (error) {
-        console.error('Error loading comments:', error);
-        commentsDiv.innerHTML = '<p style="text-align: center; color: red;">Error loading comments</p>';
-    }
+// Helper function to extract image ID from websim URL
+function extractImageIdFromUrl(url) {
+    // Extract the UUID from websim blob URLs
+    const match = url.match(/blobs\/([a-f0-9-]+)/);
+    return match ? match[1] : url;
 }
 
 // Updated image extraction for markdown format
 function extractImageUrlsFromMarkdown(content) {
     const urls = [];
     
-    // Match the pattern [![](url)](url) or ![](url)
-    const regex = /!\[.*?\]\((.*?)\)|\[!\[.*?\]\((.*?)\)\]\((.*?)\)/g;
-    let match;
+    // Handle new [Image:ID] format
+    const newFormatRegex = /\[Image:([a-f0-9-]+)\]/g;
+    let newMatch;
+    while ((newMatch = newFormatRegex.exec(content)) !== null) {
+        const imageId = newMatch[1];
+        const imageUrl = `http://api.websim.com/blobs/${imageId}`;
+        urls.push(imageUrl);
+    }
     
-    while ((match = regex.exec(content)) !== null) {
-        // The actual image URL is either in group 1 (simple format) or group 2 (linked format)
-        const url = match[1] || match[2] || match[3];
-        if (url && !urls.includes(url)) {
+    // Handle legacy markdown format for backwards compatibility
+    const legacyRegex = /!\[.*?\]\((.*?)\)|\[!\[.*?\]\((.*?)\)\]\((.*?)\)/g;
+    let legacyMatch;
+    while ((legacyMatch = legacyRegex.exec(content)) !== null) {
+        const url = legacyMatch[1] || legacyMatch[2] || legacyMatch[3];
+        if (url && !urls.includes(url) && !url.includes('blobs/')) {
             urls.push(url);
         }
     }
@@ -554,17 +560,15 @@ async function processComment() {
 }
 
 async function processImageToText() {
+    console.log('Starting Image→Text processing...');
     const imageUrl = commentImages[0]; // Use first image
+    console.log('Processing Image→Text with URL:', imageUrl);
     
     try {
-        console.log('Processing Image→Text with URL:', imageUrl);
+        const resultDiv = document.getElementById('commentResult');
+        resultDiv.innerHTML = '<div class="loading"></div><p>Processing image...</p>';
         
-        // Always re-upload to get a proper blob URL that the AI service can access
-        const response = await fetch(imageUrl);
-        const blob = await response.blob();
-        const blobUrl = await websim.upload(blob);
-        console.log('Re-uploaded image to blob URL:', blobUrl);
-        
+        // The image should already be in the correct websim format
         const completion = await websim.chat.completions.create({
             messages: [
                 {
@@ -576,7 +580,7 @@ async function processImageToText() {
                         },
                         {
                             type: "image_url",
-                            image_url: { url: blobUrl }
+                            image_url: { url: imageUrl }
                         }
                     ]
                 }
@@ -585,7 +589,6 @@ async function processImageToText() {
         
         console.log('Image analysis complete:', completion);
         
-        const resultDiv = document.getElementById('commentResult');
         resultDiv.innerHTML = `
             <h3>Image Analysis:</h3>
             <img src="${imageUrl}" alt="Comment image" style="max-width: 300px; margin: 1rem 0;" />
@@ -596,39 +599,36 @@ async function processImageToText() {
         lastGeneratedImage = imageUrl;
     } catch (error) {
         console.error('Error in Image→Text processing:', error);
-        
-        // Enhanced error logging
-        let errorDetails = {
-            message: error.message,
+        console.error('Full error details:', {
+            error: error.message,
             stack: error.stack,
-            imageUrl: imageUrl,
-            errorResponse: error.response || 'No response details'
-        };
+            imageUrl: imageUrl
+        });
         
+        // Add more detailed error reporting
         if (error.response) {
-            try {
-                const errorText = await error.response.text();
-                errorDetails.responseText = errorText;
-                console.error('Server response:', errorText);
-            } catch (e) {
-                console.error('Could not read error response:', e);
-            }
+            console.error('Response error:', error.response);
         }
         
-        console.error('Full error details:', errorDetails);
-        
-        throw new Error(`Image analysis failed: ${error.message || 'Unable to process the image. Please try a different image.'}`);
+        throw new Error(`Image analysis failed: ${error.message}`);
     }
 }
 
 async function processTextToImage() {
-    const text = selectedComment.raw_content || 'AI generated from comment';
+    const text = selectedComment.raw_content;
     
     try {
         console.log('Processing Text→Image with text:', text);
         
+        // Remove image references from text for the prompt
+        const cleanText = text.replace(/\[Image:[a-f0-9-]+\]/g, '').replace(/!\[.*?\]\(.*?\)/g, '').trim();
+        
+        if (!cleanText) {
+            throw new Error('No text content found in comment');
+        }
+        
         const image = await websim.imageGen({
-            prompt: text,
+            prompt: cleanText,
             aspect_ratio: "16:9"
         });
         
@@ -638,18 +638,13 @@ async function processTextToImage() {
         resultDiv.innerHTML = `
             <h3>Generated from Comment:</h3>
             <img src="${image.url}" alt="Generated from comment" style="max-width: 400px;" />
-            <p style="margin-top: 1rem;"><strong>Prompt:</strong> ${text}</p>
+            <p style="margin-top: 1rem;"><strong>Prompt:</strong> ${cleanText}</p>
         `;
         
-        lastGeneratedText = `Comment Text→Image "${text}"`;
+        lastGeneratedText = `Comment Text→Image "${cleanText}"`;
         lastGeneratedImage = image.url;
     } catch (error) {
         console.error('Error in Text→Image processing:', error);
-        console.error('Full error details:', {
-            error: error.message,
-            stack: error.stack,
-            text: text
-        });
         throw new Error(`Image generation failed: ${error.message}`);
     }
 }
@@ -691,16 +686,12 @@ async function processTextToSpeech() {
 }
 
 async function processChain() {
+    console.log('Starting Image→Text→Image processing...');
     const imageUrl = commentImages[0]; // Use first image
     
     try {
-        console.log('Processing Image→Text→Image with URL:', imageUrl);
-        
-        // Always re-upload to get a proper blob URL
-        const response = await fetch(imageUrl);
-        const blob = await response.blob();
-        const blobUrl = await websim.upload(blob);
-        console.log('Re-uploaded image to blob URL:', blobUrl);
+        const resultDiv = document.getElementById('commentResult');
+        resultDiv.innerHTML = '<div class="loading"></div><p>Analyzing image...</p>';
         
         // Step 1: Analyze image
         const analysis = await websim.chat.completions.create({
@@ -714,7 +705,7 @@ async function processChain() {
                         },
                         {
                             type: "image_url",
-                            image_url: { url: blobUrl }
+                            image_url: { url: imageUrl }
                         }
                     ]
                 }
@@ -722,6 +713,8 @@ async function processChain() {
         });
         
         console.log('Image analysis complete:', analysis);
+        
+        resultDiv.innerHTML = '<div class="loading"></div><p>Generating new image...</p>';
         
         // Step 2: Generate new image
         const newImage = await websim.imageGen({
@@ -744,28 +737,7 @@ async function processChain() {
         lastGeneratedImage = newImage.url;
     } catch (error) {
         console.error('Error in Image→Text→Image processing:', error);
-        
-        // Enhanced error logging
-        let errorDetails = {
-            message: error.message,
-            stack: error.stack,
-            imageUrl: imageUrl,
-            errorResponse: error.response || 'No response details'
-        };
-        
-        if (error.response) {
-            try {
-                const errorText = await error.response.text();
-                errorDetails.responseText = errorText;
-                console.error('Server response:', errorText);
-            } catch (e) {
-                console.error('Could not read error response:', e);
-            }
-        }
-        
-        console.error('Full error details:', errorDetails);
-        
-        throw new Error(`Chain processing failed: ${error.message || 'Unable to complete the chain workflow. Please try a different image.'}`);
+        throw error;
     }
 }
 
