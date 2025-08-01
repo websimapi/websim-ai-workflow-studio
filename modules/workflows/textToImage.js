@@ -9,7 +9,7 @@ export function initializeTextToImage() {
     }
 }
 
-async function handleGenerateImage() {
+export async function handleGenerateImage() {
     const prompt = document.getElementById('imagePrompt').value;
     const aspectRatio = document.getElementById('aspectRatio').value;
     const transparent = document.getElementById('transparentBg').checked;

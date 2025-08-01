@@ -14,7 +14,7 @@ export function initializeImageToText() {
     }
 }
 
-function handleImageUpload(event) {
+export function handleImageUpload(event) {
     const file = event.target.files[0];
     if (!file) return;
     
@@ -30,7 +30,7 @@ function handleImageUpload(event) {
     reader.readAsDataURL(file);
 }
 
-async function handleAnalyzeImage() {
+export async function handleAnalyzeImage() {
     if (!window.AppState.uploadedImage) return;
     
     const resultDiv = document.getElementById('textResult');

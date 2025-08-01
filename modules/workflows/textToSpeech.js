@@ -9,7 +9,7 @@ export function initializeTextToSpeech() {
     }
 }
 
-async function handleGenerateSpeech() {
+export async function handleGenerateSpeech() {
     const text = document.getElementById('speechText').value;
     const voice = document.getElementById('voice').value;
     

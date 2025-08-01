@@ -112,7 +112,7 @@ function selectComment(comment, imageUrls) {
     }
 }
 
-async function processComment() {
+export async function processComment() {
     if (!window.AppState.selectedComment) {
         alert('Please select a comment first');
         return;

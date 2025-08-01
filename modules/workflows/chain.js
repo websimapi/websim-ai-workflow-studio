@@ -15,7 +15,7 @@ export function initializeChain() {
     }
 }
 
-function handleChainUpload(event) {
+export function handleChainUpload(event) {
     const file = event.target.files[0];
     if (!file) return;
     
@@ -31,7 +31,7 @@ function handleChainUpload(event) {
     reader.readAsDataURL(file);
 }
 
-async function handleStartChain() {
+export async function handleStartChain() {
     if (!window.AppState.uploadedImage) return;
     
     const resultDiv = document.getElementById('chainResult');

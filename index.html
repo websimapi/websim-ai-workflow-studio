@@ -167,6 +167,82 @@
     }
     </script>
     <script type="module" src="app.js"></script>
+    <script>
+        // Make functions available globally for inline handlers
+        window.generateImage = () => {
+            import('./modules/workflows/textToImage.js').then(module => {
+                module.handleGenerateImage();
+            });
+        };
+        
+        window.generateSpeech = () => {
+            import('./modules/workflows/textToSpeech.js').then(module => {
+                module.handleGenerateSpeech();
+            });
+        };
+        
+        window.handleImageUpload = (event) => {
+            import('./modules/workflows/imageToText.js').then(module => {
+                module.handleImageUpload(event);
+            });
+        };
+        
+        window.analyzeImage = () => {
+            import('./modules/workflows/imageToText.js').then(module => {
+                module.handleAnalyzeImage();
+            });
+        };
+        
+        window.handleChainUpload = (event) => {
+            import('./modules/workflows/chain.js').then(module => {
+                module.handleChainUpload(event);
+            });
+        };
+        
+        window.startChain = () => {
+            import('./modules/workflows/chain.js').then(module => {
+                module.handleStartChain();
+            });
+        };
+        
+        window.handleCombineUpload = (event, index) => {
+            import('./modules/workflows/combine.js').then(module => {
+                module.handleCombineUpload(event, index);
+            });
+        };
+        
+        window.combineImages = () => {
+            import('./modules/workflows/combine.js').then(module => {
+                module.handleCombineImages();
+            });
+        };
+        
+        window.commentResult = (type) => {
+            import('./modules/services/commentService.js').then(module => {
+                module.commentResult(type);
+            });
+        };
+        
+        window.processComment = () => {
+            import('./modules/comments.js').then(module => {
+                module.processComment();
+            });
+        };
+        
+        window.downloadImage = (url, filename) => {
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            a.click();
+        };
+        
+        window.downloadAudio = (url, filename) => {
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            a.click();
+        };
+    </script>
 <script defer src="https://static.cloudflareinsights.com/beacon.min.js/v8c78df7c7c0f484497ecbca7046644da1771523124516" integrity="sha512-8DS7rgIrAmghBFwoOTujcf6D9rXvH8xm8JQ1Ja01h9QX8EzXldiszufYa4IFfKdLUKTTrnSFXLDkUEOTrZQ8Qg==" data-cf-beacon='{"version":"2024.11.0","token":"4c6229722a6346bc8eb5cb0e5eae5d41","server_timing":{"name":{"cfCacheStatus":true,"cfEdge":true,"cfExtPri":true,"cfL4":true,"cfOrigin":true,"cfSpeedBrain":true},"location_startswith":null}}' crossorigin="anonymous"></script>
 </body>
 </html>

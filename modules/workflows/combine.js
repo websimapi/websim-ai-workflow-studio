@@ -1,7 +1,6 @@
 // modules/workflows/combine.js
 import { combineImages } from '../services/combinationService.js';
 import { commentResult } from '../services/commentService.js';
-import { downloadImage } from '../services/downloadService.js';
 
 export function initializeCombine() {
     const fileInputs = ['image1', 'image2'];
@@ -28,7 +27,7 @@ export function initializeCombine() {
     }
 }
 
-function handleCombineUpload(event, index) {
+export function handleCombineUpload(event, index) {
     const file = event.target.files[0];
     if (!file) return;
     
@@ -49,7 +48,7 @@ function handleCombineUpload(event, index) {
     reader.readAsDataURL(file);
 }
 
-async function handleCombineImages() {
+export async function handleCombineImages() {
     if (!window.AppState.uploadedImage || !window.AppState.uploadedImage2) return;
     
     const prompt = document.getElementById('combinePrompt').value || "Combine these two images in a creative way";
