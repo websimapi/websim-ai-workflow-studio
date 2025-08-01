@@ -419,10 +419,22 @@ async function loadComments() {
             div.className = 'comment-item';
             div.dataset.commentId = comment.id;
             
-            // Extract images from raw_content markdown
+            // Extract images from comment content
             let imageUrls = [];
             if (comment.raw_content) {
                 imageUrls = extractImageUrlsFromMarkdown(comment.raw_content);
+            }
+            
+            // Also check if there are any images in the structured content
+            if (comment.content?.children) {
+                comment.content.children.forEach(child => {
+                    if (child.type === 'image' && child.attrs?.src) {
+                        const url = child.attrs.src;
+                        if (!imageUrls.includes(url)) {
+                            imageUrls.push(url);
+                        }
+                    }
+                });
             }
             
             let content = `
@@ -451,20 +463,30 @@ async function loadComments() {
     }
 }
 
-// Updated image extraction for markdown format
+// Update image extraction for markdown format
 function extractImageUrlsFromMarkdown(content) {
     const urls = [];
     
-    // Match the pattern [![](url)](url) or ![](url)
-    const regex = /!\[.*?\]\((.*?)\)|\[!\[.*?\]\((.*?)\)\]\((.*?)\)/g;
+    // Match both markdown image formats: ![alt](url) and [![](url)](url)
+    const regex = /!\[.*?\]\((.*?)\)/g;
     let match;
     
     while ((match = regex.exec(content)) !== null) {
-        // The actual image URL is either in group 1 (simple format) or group 2 (linked format)
-        const url = match[1] || match[2] || match[3];
-        if (url && !urls.includes(url)) {
+        const url = match[1];
+        if (url && url.startsWith('http') && !urls.includes(url)) {
             urls.push(url);
         }
+    }
+    
+    // Also try to catch direct URLs
+    const urlRegex = /(https?:\/\/[^\s]+\.(?:png|jpg|jpeg|gif|webp|svg))/gi;
+    const directMatches = content.match(urlRegex);
+    if (directMatches) {
+        directMatches.forEach(url => {
+            if (!urls.includes(url)) {
+                urls.push(url);
+            }
+        });
     }
     
     return urls;
@@ -544,43 +566,58 @@ async function processComment() {
         
         document.getElementById('commentOutputBtn').style.display = 'inline-block';
     } catch (error) {
+        console.error('Error in processComment:', error);
         resultDiv.innerHTML = `<p style="color: red;">Error: ${error.message}</p>`;
         document.getElementById('commentOutputBtn').style.display = 'none';
     }
 }
 
+// Update processImageToText to handle image URLs correctly
 async function processImageToText() {
-    const imageUrl = commentImages[0]; // Use first image
+    if (commentImages.length === 0) {
+        alert('No images found in comment for Image → Text processing');
+        return;
+    }
     
-    const analysis = await websim.chat.completions.create({
-        messages: [
-            {
-                role: "user",
-                content: [
-                    {
-                        type: "text",
-                        text: "Describe this image in detail. Include what's visible, the style, colors, mood, and any interesting elements."
-                    },
-                    {
-                        type: "image_url",
-                        image_url: { url: imageUrl }
-                    }
-                ]
-            }
-        ]
-    });
+    const imageUrl = commentImages[0];
     
     const resultDiv = document.getElementById('commentResult');
-    resultDiv.innerHTML = `
-        <h3>Image Analysis:</h3>
-        <img src="${imageUrl}" alt="Comment image" style="max-width: 300px; margin: 1rem 0;" />
-        <p style="text-align: left; white-space: pre-wrap;">${analysis.content}</p>
-    `;
+    resultDiv.innerHTML = '<div class="loading"></div>';
     
-    lastGeneratedText = `Comment Image→Text "${analysis.content}"`;
-    lastGeneratedImage = imageUrl;
+    try {
+        const completion = await websim.chat.completions.create({
+            messages: [
+                {
+                    role: "user",
+                    content: [
+                        {
+                            type: "text",
+                            text: "Describe this image in detail. Include what's visible, the style, colors, mood, and any interesting elements."
+                        },
+                        {
+                            type: "image_url",
+                            image_url: { url: imageUrl }
+                        }
+                    ]
+                }
+            ]
+        });
+        
+        resultDiv.innerHTML = `
+            <h3>Image Analysis:</h3>
+            <img src="${imageUrl}" alt="Comment image" style="max-width: 300px; margin: 1rem 0;" />
+            <p style="text-align: left; white-space: pre-wrap;">${completion.content}</p>
+        `;
+        
+        lastGeneratedText = `Comment Image→Text "${completion.content}"`;
+        lastGeneratedImage = imageUrl;
+    } catch (error) {
+        console.error('Error in processImageToText:', error);
+        resultDiv.innerHTML = `<p style="color: red;">Error: ${error.message}</p>`;
+    }
 }
 
+// Update processTextToImage to handle image URLs correctly
 async function processTextToImage() {
     const text = selectedComment.raw_content || 'AI generated from comment';
     
@@ -600,6 +637,7 @@ async function processTextToImage() {
     lastGeneratedImage = image.url;
 }
 
+// Update processTextToSpeech to handle image URLs correctly
 async function processTextToSpeech() {
     const text = selectedComment.raw_content || 'AI generated speech';
     
@@ -622,45 +660,60 @@ async function processTextToSpeech() {
     lastGeneratedAudio = speech.url;
 }
 
+// Update processChain to handle image URLs correctly
 async function processChain() {
-    const imageUrl = commentImages[0]; // Use first image
+    if (commentImages.length === 0) {
+        alert('No images found in comment for Image → Text → Image processing');
+        return;
+    }
     
-    // Step 1: Analyze image
-    const analysis = await websim.chat.completions.create({
-        messages: [
-            {
-                role: "user",
-                content: [
-                    {
-                        type: "text",
-                        text: "Describe this image in detail for the purpose of generating a new image. Focus on the key visual elements, style, and composition."
-                    },
-                    {
-                        type: "image_url",
-                        image_url: { url: imageUrl }
-                    }
-                ]
-            }
-        ]
-    });
-    
-    // Step 2: Generate new image
-    const newImage = await websim.imageGen({
-        prompt: analysis.content,
-        aspect_ratio: "16:9"
-    });
-    
+    const imageUrl = commentImages[0];
     const resultDiv = document.getElementById('commentResult');
-    resultDiv.innerHTML = `
-        <h3>Chain Process Results:</h3>
-        <img src="${imageUrl}" alt="Comment image" style="max-width: 200px; margin: 0.5rem;" />
-        <img src="${newImage.url}" alt="Generated from analysis" style="max-width: 200px; margin: 0.5rem;" />
-        <h4>Analysis:</h4>
-        <p style="text-align: left; white-space: pre-wrap; margin-bottom: 1rem;">${analysis.content}</p>
-    `;
+    resultDiv.innerHTML = '<div class="loading"></div><p>Analyzing image...</p>';
     
-    lastGeneratedText = `Comment Image→Text→Image "${analysis.content}"`;
-    lastGeneratedImage = newImage.url;
+    try {
+        // Step 1: Analyze image
+        const analysis = await websim.chat.completions.create({
+            messages: [
+                {
+                    role: "user",
+                    content: [
+                        {
+                            type: "text",
+                            text: "Describe this image in detail for the purpose of generating a new image. Focus on the key visual elements, style, and composition."
+                        },
+                        {
+                            type: "image_url",
+                            image_url: { url: imageUrl }
+                        }
+                    ]
+                }
+            ]
+        });
+        
+        resultDiv.innerHTML = '<div class="loading"></div><p>Generating new image...</p>';
+        
+        // Step 2: Generate new image
+        const newImage = await websim.imageGen({
+            prompt: analysis.content,
+            aspect_ratio: "16:9"
+        });
+        
+        lastGeneratedText = `Comment Image→Text→Image "${analysis.content}"`;
+        lastGeneratedImage = newImage.url;
+        
+        resultDiv.innerHTML = `
+            <h3>Chain Process Results:</h3>
+            <img src="${imageUrl}" alt="Comment image" style="max-width: 200px; margin: 0.5rem;" />
+            <img src="${newImage.url}" alt="Generated from analysis" style="max-width: 200px; margin: 0.5rem;" />
+            <h4>Analysis:</h4>
+            <p style="text-align: left; white-space: pre-wrap; margin-bottom: 1rem;">${analysis.content}</p>
+        `;
+        
+    } catch (error) {
+        console.error('Error in processChain:', error);
+        resultDiv.innerHTML = `<p style="color: red;">Error: ${error.message}</p>`;
+    }
 }
 
 // Download utilities
