@@ -1,9 +1,9 @@
 // Comment functionality - posting and processing comments
-import { extractImageUrlsFromMarkdown, convertImageToBase64 } from './utils.js';
+import { convertImageToBase64 } from './utils.js';
 import { getAppState, updateAppState } from './app.js';
 
-// Enhanced image URL extraction with better regex
-export function extractImageUrlsFromMarkdown(content) {
+// Enhanced image URL extraction with better regex - only export once
+function extractImageUrlsFromMarkdown(content) {
     const urls = [];
     
     // More comprehensive regex patterns
