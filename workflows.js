@@ -339,7 +339,7 @@ export function startRecording() {
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     const recognition = new SpeechRecognition();
     
-    recognition.continuous = false; // Changed to auto-stop
+    recognition.continuous = false;
     recognition.interimResults = true;
     recognition.lang = 'en-US';
     
@@ -352,19 +352,33 @@ export function startRecording() {
     
     recognition.onresult = (event) => {
         let finalTranscript = '';
+        let interimTranscript = '';
         
         for (let i = event.resultIndex; i < event.results.length; i++) {
             const transcript = event.results[i][0].transcript;
             if (event.results[i].isFinal) {
-                finalTranscript += transcript + ' ';
+                finalTranscript += transcript.trim() + ' ';
+            } else {
+                interimTranscript += transcript;
             }
         }
         
         const textarea = document.getElementById('speechToTextResult');
-        if (finalTranscript.trim()) {
+        
+        // Update textarea with interim results but keep final transcript
+        if (finalTranscript) {
             textarea.value = finalTranscript.trim();
             updateAppState({ speechText: textarea.value.trim() });
             document.getElementById('processSpeechBtn').disabled = false;
+            
+            // Auto-process after final transcript
+            setTimeout(() => {
+                if (textarea.value.trim()) {
+                    processSpeechText();
+                }
+            }, 1000);
+        } else if (interimTranscript) {
+            textarea.value = interimTranscript;
         }
     };
     
@@ -376,7 +390,6 @@ export function startRecording() {
     
     recognition.onend = () => {
         stopRecording();
-        document.getElementById('recordingStatus').textContent = 'Recording completed - ready to process';
     };
     
     updateAppState({ speechRecognizer: recognition });
@@ -393,9 +406,10 @@ export function stopRecording() {
     
     document.getElementById('startRecording').style.display = 'inline-block';
     document.getElementById('stopRecording').style.display = 'none';
-    document.getElementById('recordingStatus').textContent = 'Recording stopped';
+    document.getElementById('recordingStatus').textContent = 'Processing...';
 }
 
+// Enhanced processSpeechText with better handling
 export async function processSpeechText() {
     const text = document.getElementById('speechToTextResult').value;
     const processType = document.getElementById('speechProcessType').value;
@@ -409,7 +423,15 @@ export async function processSpeechText() {
     resultDiv.innerHTML = '<div class="loading"></div>';
     
     try {
-        switch(processType) {
+        // Auto-select the process type based on context
+        let autoProcessType = processType;
+        
+        // If the text mentions needing an image or visual analysis, switch to text-to-image
+        if (text.toLowerCase().includes('image') || text.toLowerCase().includes('picture') || text.toLowerCase().includes('photo')) {
+            autoProcessType = 'text-to-image';
+        }
+        
+        switch(autoProcessType) {
             case 'text-to-image':
                 await processSpeechToImage(text);
                 break;
@@ -417,16 +439,13 @@ export async function processSpeechText() {
                 await processSpeechToSpeech(text);
                 break;
             case 'image-to-text':
-                alert('Please upload an image first, then use Image → Text workflow');
-                resultDiv.innerHTML = '<p style="color: #666;">Please use Image → Text workflow for image analysis</p>';
+                resultDiv.innerHTML = '<p style="color: #666;">Switch to Image → Text workflow for image analysis</p>';
                 return;
             case 'chain':
-                alert('Please upload an image first, then use Image → Text → Image workflow');
-                resultDiv.innerHTML = '<p style="color: #666;">Please use Image → Text → Image workflow</p>';
+                resultDiv.innerHTML = '<p style="color: #666;">Switch to Image → Text → Image workflow for chain processing</p>';
                 return;
             case 'combine':
-                alert('Please upload images first, then use Combine Images workflow');
-                resultDiv.innerHTML = '<p style="color: #666;">Please use Combine Images workflow</p>';
+                resultDiv.innerHTML = '<p style="color: #666;">Switch to Combine Images workflow for combining images</p>';
                 return;
         }
         

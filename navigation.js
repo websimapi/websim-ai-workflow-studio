@@ -31,5 +31,13 @@ function handleNavClick(btn) {
     
     if (btn.dataset.workflow === 'comment-to-x') {
         loadComments();
+    } else if (btn.dataset.workflow === 'speech-to-text-x') {
+        // Auto-start recording when navigating to speech-to-text-x
+        setTimeout(() => {
+            const textarea = document.getElementById('speechToTextResult');
+            if (!textarea.value.trim()) {
+                startRecording();
+            }
+        }, 300);
     }
 }
