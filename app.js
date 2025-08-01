@@ -43,7 +43,7 @@ async function generateImage() {
         });
         
         lastGeneratedImage = result.url;
-        lastGeneratedText = `Generated image from prompt: "${prompt}"`;
+        lastGeneratedText = `Text->Image "${prompt}"`;
         
         resultDiv.innerHTML = `
             <img src="${result.url}" alt="Generated image" />
@@ -77,7 +77,7 @@ async function generateSpeech() {
         });
         
         lastGeneratedAudio = result.url;
-        lastGeneratedText = `Generated speech from text: "${text}"`;
+        lastGeneratedText = `Text->Speech "${text}"`;
         
         resultDiv.innerHTML = `
             <audio controls>
@@ -136,8 +136,7 @@ async function analyzeImage() {
             ]
         });
         
-        lastGeneratedText = completion.content;
-        lastGeneratedImage = uploadedImage;
+        lastGeneratedText = `Image->Text "${completion.content}"`;
         
         resultDiv.innerHTML = `
             <h3>Analysis:</h3>
@@ -203,7 +202,7 @@ async function startChain() {
         });
         
         lastGeneratedImage = newImage.url;
-        lastGeneratedText = `Chain workflow result: Original analysis: "${analysis.content}"`;
+        lastGeneratedText = `Image->Text->Image "${analysis.content}"`;
         
         resultDiv.innerHTML = `
             <h3>Original Analysis:</h3>
@@ -313,7 +312,7 @@ Write as if you're a photographer describing a scene to another artist who needs
         });
         
         lastGeneratedImage = combinedImage.url;
-        lastGeneratedText = `Combined images result: Prompt: "${prompt}" | Description: "${cleanedPrompt}"`;
+        lastGeneratedText = `Combine Images "${prompt}" | Description: "${cleanedPrompt}"`;
         
         resultDiv.innerHTML = `
             <h3>Enhanced Description (focused on user-specified details):</h3>
