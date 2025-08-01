@@ -327,7 +327,185 @@ Write as if you're a photographer describing a scene to another artist who needs
     }
 }
 
-// Speech to Text functionality
+// Enhanced AI processing for complex chained requests
+export async function processSpeechText() {
+    const text = document.getElementById('speechToTextResult').value;
+    
+    if (!text.trim()) {
+        alert('Please speak some text first');
+        return;
+    }
+    
+    const resultDiv = document.getElementById('speechTextResult');
+    resultDiv.innerHTML = '<div class="loading"></div><p>AI analyzing your request...</p>';
+    
+    try {
+        // Enhanced AI that can handle complex chained workflows
+        const analysis = await websim.chat.completions.create({
+            messages: [
+                {
+                    role: "system",
+                    content: `Analyze the user's spoken request and determine the EXACT workflow sequence needed. You can handle complex multi-step requests.
+
+Return JSON with the workflow plan. Examples:
+- "make a dragon image then describe it and make it again" → {"steps": ["text-to-image", "image-to-text", "text-to-image"], "prompts": ["dragon", "describe dragon image", "dragon based on description"], "descriptions": ["Generate initial dragon image", "Analyze the dragon image", "Recreate dragon from description"]}
+- "create a cat then turn it into text then make a new cat image" → {"steps": ["text-to-image", "image-to-text", "text-to-image"], "prompts": ["cat", "describe cat image", "cat based on description"]}
+- "make a picture of a sunset" → {"steps": ["text-to-image"], "prompts": ["sunset"]}
+- "analyze this image" → {"steps": ["image-to-text"]}
+
+Always return valid JSON with keys: steps (array), prompts (array), descriptions (array)`
+                },
+                {
+                    role: "user",
+                    content: text
+                }
+            ],
+            json: true
+        });
+        
+        const workflowPlan = JSON.parse(analysis.content);
+        await executeSpeechWorkflow(workflowPlan, text);
+        
+        document.getElementById('commentSpeechTextBtn').style.display = 'inline-block';
+    } catch (error) {
+        resultDiv.innerHTML = `<p style="color: red;">Error: ${error.message}</p>`;
+        document.getElementById('commentSpeechTextBtn').style.display = 'none';
+    }
+}
+
+// Execute complex speech workflows
+async function executeSpeechWorkflow(plan, originalText) {
+    const resultDiv = document.getElementById('speechTextResult');
+    let currentImage = null;
+    let currentText = null;
+    
+    // Clear previous results
+    resultDiv.innerHTML = '';
+    const resultsContainer = document.createElement('div');
+    resultsContainer.style.cssText = 'text-align: left; margin: 1rem 0;';
+    resultDiv.appendChild(resultsContainer);
+    
+    for (let i = 0; i < plan.steps.length; i++) {
+        const step = plan.steps[i];
+        const prompt = plan.prompts[i] || '';
+        const description = plan.descriptions?.[i] || '';
+        
+        const stepDiv = document.createElement('div');
+        stepDiv.style.cssText = 'margin: 1rem 0; padding: 1rem; background: #f5f5f5; border-radius: 10px;';
+        
+        switch(step) {
+            case 'text-to-image':
+                const imageResult = await websim.imageGen({
+                    prompt: prompt,
+                    aspect_ratio: "16:9"
+                });
+                currentImage = imageResult.url;
+                
+                stepDiv.innerHTML = `
+                    <h4>Step ${i+1}: Text → Image</h4>
+                    <p><em>Prompt:</em> ${prompt}</p>
+                    <img src="${imageResult.url}" alt="Generated image" style="max-width: 100%; border-radius: 5px; margin: 0.5rem 0;" />
+                `;
+                break;
+                
+            case 'image-to-text':
+                if (!currentImage) {
+                    stepDiv.innerHTML = `<p>Error: No image available for analysis</p>`;
+                    break;
+                }
+                
+                const analysis = await websim.chat.completions.create({
+                    messages: [
+                        {
+                            role: "user",
+                            content: [
+                                {
+                                    type: "text",
+                                    text: "Describe this image in detail for the purpose of recreating it. Include all key visual elements, style, colors, and composition details."
+                                },
+                                {
+                                    type: "image_url",
+                                    image_url: { url: currentImage }
+                                }
+                            ]
+                        }
+                    ]
+                });
+                currentText = analysis.content;
+                
+                stepDiv.innerHTML = `
+                    <h4>Step ${i+1}: Image → Text Analysis</h4>
+                    <p><em>Description:</em> ${analysis.content}</p>
+                    <img src="${currentImage}" alt="Image being analyzed" style="max-width: 100px; border-radius: 5px; margin: 0.5rem 0;" />
+                `;
+                break;
+                
+            case 'text-to-speech':
+                const speechResult = await websim.textToSpeech({
+                    text: prompt || currentText || originalText,
+                    voice: 'en-male'
+                });
+                
+                stepDiv.innerHTML = `
+                    <h4>Step ${i+1}: Text → Speech</h4>
+                    <p><em>Text:</em> ${prompt || currentText || originalText}</p>
+                    <audio controls style="margin: 0.5rem 0;">
+                        <source src="${speechResult.url}" type="audio/mpeg">
+                    </audio>
+                `;
+                break;
+                
+            case 'chain':
+                // Special handling for image -> text -> image
+                if (!currentImage) {
+                    stepDiv.innerHTML = `<p>Error: No image available for chaining</p>`;
+                    break;
+                }
+                
+                const chainAnalysis = await websim.chat.completions.create({
+                    messages: [
+                        {
+                            role: "user",
+                            content: [
+                                {
+                                    type: "text",
+                                    text: "Describe this image in detail for recreation"
+                                },
+                                {
+                                    type: "image_url",
+                                    image_url: { url: currentImage }
+                                }
+                            ]
+                        }
+                    ]
+                });
+                
+                const chainImage = await websim.imageGen({
+                    prompt: chainAnalysis.content,
+                    aspect_ratio: "16:9"
+                });
+                currentImage = chainImage.url;
+                
+                stepDiv.innerHTML = `
+                    <h4>Step ${i+1}: Image → Text → Image</h4>
+                    <p><em>Analysis:</em> ${chainAnalysis.content}</p>
+                    <img src="${chainImage.url}" alt="Chained result" style="max-width: 100%; border-radius: 5px; margin: 0.5rem 0;" />
+                `;
+                break;
+        }
+        
+        resultsContainer.appendChild(stepDiv);
+    }
+    
+    // Update final state
+    updateAppState({
+        lastGeneratedImage: currentImage,
+        lastGeneratedText: originalText,
+        lastGeneratedAudio: null
+    });
+}
+
+// Improved speech recognition
 export function startRecording() {
     const state = getAppState();
     
@@ -339,7 +517,7 @@ export function startRecording() {
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     const recognition = new SpeechRecognition();
     
-    recognition.continuous = false;
+    recognition.continuous = true;
     recognition.interimResults = true;
     recognition.lang = 'en-US';
     
@@ -357,39 +535,38 @@ export function startRecording() {
         for (let i = event.resultIndex; i < event.results.length; i++) {
             const transcript = event.results[i][0].transcript;
             if (event.results[i].isFinal) {
-                finalTranscript += transcript.trim() + ' ';
+                finalTranscript += transcript;
             } else {
                 interimTranscript += transcript;
             }
         }
         
         const textarea = document.getElementById('speechToTextResult');
+        textarea.value = finalTranscript || interimTranscript;
+        updateAppState({ speechText: textarea.value.trim() });
         
-        // Update textarea with interim results but keep final transcript
+        // Auto-process after 2 seconds of silence
         if (finalTranscript) {
-            textarea.value = finalTranscript.trim();
-            updateAppState({ speechText: textarea.value.trim() });
-            document.getElementById('processSpeechBtn').disabled = false;
-            
-            // Auto-process after final transcript
             setTimeout(() => {
-                if (textarea.value.trim()) {
+                if (!getAppState().isRecording) {
                     processSpeechText();
                 }
-            }, 1000);
-        } else if (interimTranscript) {
-            textarea.value = interimTranscript;
+            }, 2000);
         }
     };
     
     recognition.onerror = (event) => {
         console.error('Speech recognition error:', event.error);
         document.getElementById('recordingStatus').textContent = `Error: ${event.error}`;
-        stopRecording();
     };
     
     recognition.onend = () => {
-        stopRecording();
+        // Don't clear text on end
+        document.getElementById('recordingStatus').textContent = 'Processing...';
+        setTimeout(() => {
+            stopRecording();
+            processSpeechText();
+        }, 500);
     };
     
     updateAppState({ speechRecognizer: recognition });
@@ -409,112 +586,6 @@ export function stopRecording() {
     document.getElementById('recordingStatus').textContent = 'Processing...';
 }
 
-// Enhanced processSpeechText with better handling
-export async function processSpeechText() {
-    const text = document.getElementById('speechToTextResult').value;
-    
-    if (!text.trim()) {
-        alert('Please speak some text first');
-        return;
-    }
-    
-    const resultDiv = document.getElementById('speechTextResult');
-    resultDiv.innerHTML = '<div class="loading"></div><p>AI analyzing your request...</p>';
-    
-    try {
-        // AI determines what to do based on the spoken content
-        const analysis = await websim.chat.completions.create({
-            messages: [
-                {
-                    role: "system",
-                    content: `Analyze the user's request and determine the best workflow. Consider:
-1. Text-to-image: If they mention generating, creating, making, or want something visual
-2. Text-to-speech: If they mention audio, voice, speaking, or want to hear something
-3. Image-to-text: If they mention analyzing, describing, or have an image context
-4. Chain: If they mention transforming or converting between modalities
-
-Return ONLY the workflow name: text-to-image OR text-to-speech OR explain-not-supported`
-                },
-                {
-                    role: "user",
-                    content: text
-                }
-            ]
-        });
-        
-        const determinedWorkflow = analysis.content.toLowerCase().trim();
-        
-        if (determinedWorkflow.includes('text-to-image')) {
-            await processSpeechToImage(text);
-        } else if (determinedWorkflow.includes('text-to-speech')) {
-            await processSpeechToSpeech(text);
-        } else if (determinedWorkflow.includes('explain-not-supported')) {
-            resultDiv.innerHTML = '<p>Based on your request, please:</p><ul><li>Switch to Image tab to analyze images</li><li>Switch to Chain tab for image transformations</li><li>Or ask for text/image generation directly</li></ul>';
-        } else {
-            // Default to text-to-image
-            await processSpeechToImage(text);
-        }
-        
-        document.getElementById('commentSpeechTextBtn').style.display = 'inline-block';
-    } catch (error) {
-        resultDiv.innerHTML = `<p style="color: red;">Error: ${error.message}</p>`;
-        document.getElementById('commentSpeechTextBtn').style.display = 'none';
-    }
-}
-
-async function processSpeechToImage(text) {
-    const resultDiv = document.getElementById('speechTextResult');
-    
-    try {
-        const result = await websim.imageGen({
-            prompt: text,
-            aspect_ratio: "16:9"
-        });
-        
-        updateAppState({
-            lastGeneratedImage: result.url,
-            lastGeneratedText: `Speech->Text->Image "${text}"`
-        });
-        
-        resultDiv.innerHTML = `
-            <h3>Generated from speech:</h3>
-            <p style="font-style: italic; color: #666; margin-bottom: 1rem;">"${text}"</p>
-            <img src="${result.url}" alt="Generated from speech" />
-            <button onclick="downloadImage('${result.url}', 'ai-speech-image.png')" class="primary-btn" style="display: inline-block; margin-top: 1rem;">Download</button>
-        `;
-    } catch (error) {
-        throw error;
-    }
-}
-
-async function processSpeechToSpeech(text) {
-    const resultDiv = document.getElementById('speechTextResult');
-    
-    try {
-        const result = await websim.textToSpeech({
-            text: text,
-            voice: 'en-male'
-        });
-        
-        updateAppState({
-            lastGeneratedAudio: result.url,
-            lastGeneratedText: `Speech->Text->Speech "${text}"`
-        });
-        
-        resultDiv.innerHTML = `
-            <h3>Speech converted to text, then back to speech:</h3>
-            <p style="font-style: italic; color: #666; margin-bottom: 1rem;">"${text}"</p>
-            <audio controls>
-                <source src="${result.url}" type="audio/mpeg">
-                Your browser does not support the audio element.
-            </audio>
-            <button onclick="downloadAudio('${result.url}', 'ai-speech-conversion.mp3')" class="primary-btn" style="display: inline-block; margin-top: 1rem;">Download</button>
-        `;
-    } catch (error) {
-        throw error;
-    }
-}
-
 // Make functions available globally for HTML onclick handlers
 window.generateImage = generateImage;
 window.generateSpeech = generateSpeech;
@@ -527,7 +598,6 @@ window.combineImages = combineImages;
 window.downloadImage = downloadImage;
 window.downloadAudio = downloadAudio;
 
-// Make new functions available globally
-window.startRecording = startRecording;
-window.stopRecording = stopRecording;
+// Make enhanced functions available globally
 window.processSpeechText = processSpeechText;
+window.startRecording = startRecording;

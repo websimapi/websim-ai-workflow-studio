@@ -2,6 +2,35 @@
 import { extractImageUrlsFromMarkdown, convertImageToBase64 } from './utils.js';
 import { getAppState, updateAppState } from './app.js';
 
+// Enhanced image URL extraction with better regex
+export function extractImageUrlsFromMarkdown(content) {
+    const urls = [];
+    
+    // More comprehensive regex patterns
+    const patterns = [
+        // ![alt text](url)
+        /!\[.*?\]\((.*?)\)/g,
+        // [alt text](url) with optional ! prefix
+        /\[.*?\]\((.*?)\)/g,
+        // Direct URL patterns
+        /https?:\/\/[^\s]+\.(?:jpg|jpeg|png|gif|webp|svg)/gi,
+        // websim URL patterns
+        /https?:\/\/[^\s]+websim\.[^\s]+\/[^\s]+\.(?:jpg|jpeg|png|gif|webp)/gi
+    ];
+    
+    patterns.forEach(pattern => {
+        let match;
+        while ((match = pattern.exec(content)) !== null) {
+            const url = match[1] || match[0];
+            if (url && !urls.includes(url) && url.startsWith('http')) {
+                urls.push(url);
+            }
+        }
+    });
+    
+    return urls;
+}
+
 // Post results as comments
 export async function commentResult(type) {
     const state = getAppState();
@@ -199,9 +228,8 @@ async function processImageToText() {
     }
     
     try {
+        // Re-upload image to prevent CORS issues
         const imageUrl = commentImages[0];
-        
-        // Ensure CORS-safe handling
         const base64 = await convertImageToBase64(imageUrl);
         
         const analysis = await websim.chat.completions.create({
@@ -340,6 +368,9 @@ async function processChain() {
         throw error;
     }
 }
+
+// Export the missing processImageToText function
+window.processImageToText = processImageToText;
 
 // Make functions available globally for HTML onclick handlers
 window.commentResult = commentResult;
