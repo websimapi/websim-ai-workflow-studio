@@ -247,33 +247,24 @@ async function combineImages() {
                             type: "text",
                             text: `I need to combine these two images based on this prompt: "${prompt}". 
                             
-Please provide a DETAILED technical analysis for each image:
+Please provide a DETAILED technical analysis for each image and create a final English description using only alphanumeric characters and spaces.
 
 **Image 1 Analysis (Weight: ${weight1}%):**
-1. Main subject/objects and their positions
+1. Main subject and objects
 2. Color palette and dominant colors
-3. Lighting conditions and mood
-4. Style/artistic elements
-5. Background details
-6. Textures and patterns
-7. Composition/framing
+3. Lighting and mood
+4. Style and composition
+5. Background elements
 
 **Image 2 Analysis (Weight: ${weight2}%):**
-1. Main subject/objects and their positions
+1. Main subject and objects
 2. Color palette and dominant colors
-3. Lighting conditions and mood
-4. Style/artistic elements
-5. Background details
-6. Textures and patterns
-7. Composition/framing
+3. Lighting and mood
+4. Style and composition
+5. Background elements
 
-**Combination Strategy:**
-Based on the weights (${weight1}% Image 1, ${weight2}% Image 2) and prompt "${prompt}", provide specific instructions for how to merge these images while preserving the most important details from each. Include guidance on:
-- Which elements to emphasize from each image
-- How to blend the color palettes
-- How to handle conflicting styles
-- Positioning recommendations
-- Any creative interpretations`
+**Final Description:**
+Create a single paragraph description in plain English using only alphanumeric characters and spaces. This description should guide the creation of a new image that combines both source images according to the specified weights while maintaining all important visual details.`
                         },
                         {
                             type: "image_url",
@@ -290,25 +281,22 @@ Based on the weights (${weight1}% Image 1, ${weight2}% Image 2) and prompt "${pr
         
         resultDiv.innerHTML = '<div class="loading"></div><p>Creating sophisticated combined image...</p>';
         
-        // Enhanced prompt for better detail preservation
-        const enhancedPrompt = `Based on the detailed analysis below, create a combined image that preserves key details from both sources:
-
-${analysis.content}
-
-IMPORTANT: Ensure the final image maintains high fidelity to both source images, with clear visibility of important elements from each according to their specified weights. Avoid losing details in the merge process.`;
+        // Clean the prompt to ensure only English alphanumeric characters
+        const cleanedPrompt = analysis.content
+            .replace(/[^a-zA-Z0-9\s.,]/g, '')
+            .replace(/\s+/g, ' ')
+            .trim();
         
-        // Generate combined image with higher quality settings
+        // Generate combined image with cleaned prompt
         const combinedImage = await websim.imageGen({
-            prompt: enhancedPrompt,
-            aspect_ratio: "16:9",
-            quality: "high",
-            style: "photographic"
+            prompt: cleanedPrompt,
+            aspect_ratio: "16:9"
         });
         
         resultDiv.innerHTML = `
-            <h3>Detailed Analysis & Combination Strategy:</h3>
-            <div style="text-align: left; white-space: pre-wrap; max-height: 300px; overflow-y: auto; background: #f5f5f5; padding: 1rem; border-radius: 10px; margin-bottom: 2rem;">
-                ${analysis.content}
+            <h3>Analysis & Cleaned Description:</h3>
+            <div style="text-align: left; white-space: pre-wrap; max-height: 150px; overflow-y: auto; background: #f5f5f5; padding: 1rem; border-radius: 10px; margin-bottom: 2rem;">
+                ${cleanedPrompt}
             </div>
             <h3>Combined Result (${weight1}% Image 1 / ${weight2}% Image 2):</h3>
             <img src="${combinedImage.url}" alt="Combined image" style="max-width: 100%; border-radius: 10px; box-shadow: 0 5px 15px rgba(0,0,0,0.1);" />
