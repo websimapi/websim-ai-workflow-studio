@@ -339,7 +339,7 @@ export function startRecording() {
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     const recognition = new SpeechRecognition();
     
-    recognition.continuous = true;
+    recognition.continuous = false; // Changed to auto-stop
     recognition.interimResults = true;
     recognition.lang = 'en-US';
     
@@ -352,27 +352,20 @@ export function startRecording() {
     
     recognition.onresult = (event) => {
         let finalTranscript = '';
-        let interimTranscript = '';
         
         for (let i = event.resultIndex; i < event.results.length; i++) {
             const transcript = event.results[i][0].transcript;
             if (event.results[i].isFinal) {
                 finalTranscript += transcript + ' ';
-            } else {
-                interimTranscript += transcript;
             }
         }
         
         const textarea = document.getElementById('speechToTextResult');
-        // Only append final transcript, don't accumulate
         if (finalTranscript.trim()) {
-            textarea.value += finalTranscript.trim() + ' ';
+            textarea.value = finalTranscript.trim();
             updateAppState({ speechText: textarea.value.trim() });
             document.getElementById('processSpeechBtn').disabled = false;
         }
-        
-        // Show interim results but don't append to final text
-        textarea.value = textarea.value.replace(/[^]*$/, interimTranscript);
     };
     
     recognition.onerror = (event) => {
@@ -382,9 +375,8 @@ export function startRecording() {
     };
     
     recognition.onend = () => {
-        if (getAppState().isRecording) {
-            recognition.start();
-        }
+        stopRecording();
+        document.getElementById('recordingStatus').textContent = 'Recording completed - ready to process';
     };
     
     updateAppState({ speechRecognizer: recognition });
