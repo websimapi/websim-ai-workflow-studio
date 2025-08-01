@@ -7,18 +7,27 @@ let uploadedImage2 = null;
 let lastGeneratedImage = null;
 let lastGeneratedText = null;
 let lastGeneratedAudio = null;
+let selectedComment = null;
+let commentImages = [];
 
 // Navigation
+const originalNavClick = (btn) => {
+    document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    
+    document.querySelectorAll('.workflow').forEach(w => w.classList.remove('active'));
+    document.getElementById(btn.dataset.workflow).classList.add('active');
+    
+    currentWorkflow = btn.dataset.workflow;
+    
+    if (btn.dataset.workflow === 'comment-to-x') {
+        loadComments();
+    }
+};
+
+// Override nav buttons
 document.querySelectorAll('.nav-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-        document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
-        
-        document.querySelectorAll('.workflow').forEach(w => w.classList.remove('active'));
-        document.getElementById(btn.dataset.workflow).classList.add('active');
-        
-        currentWorkflow = btn.dataset.workflow;
-    });
+    btn.addEventListener('click', () => originalNavClick(btn));
 });
 
 // Text to Image
@@ -386,6 +395,269 @@ async function commentResult(type) {
         console.error('Error posting comment:', error);
         alert('Could not post comment. Please try again.');
     }
+}
+
+// Comment to X functionality
+async function loadComments() {
+    const commentsDiv = document.getElementById('commentsList');
+    
+    try {
+        const project = await window.websim.getCurrentProject();
+        const response = await fetch(`/api/v1/projects/${project.id}/comments`);
+        const data = await response.json();
+        
+        if (!data.comments?.data?.length) {
+            commentsDiv.innerHTML = '<p style="text-align: center; color: #666;">No comments found</p>';
+            return;
+        }
+        
+        commentsDiv.innerHTML = '';
+        
+        data.comments.data.forEach(item => {
+            const comment = item.comment;
+            const div = document.createElement('div');
+            div.className = 'comment-item';
+            div.dataset.commentId = comment.id;
+            
+            let content = `
+                <div class="comment-author">${comment.author.username}</div>
+                <div class="comment-text">${comment.raw_content || 'No text'}</div>
+            `;
+            
+            // Handle images in comments
+            let hasImages = false;
+            if (comment.content?.children) {
+                const imageUrls = extractImageUrls(comment.content);
+                if (imageUrls.length > 0) {
+                    content += '<div class="comment-images">';
+                    imageUrls.forEach(url => {
+                        content += `<img src="${url}" alt="Comment image" />`;
+                    });
+                    content += '</div>';
+                    hasImages = true;
+                }
+            }
+            
+            content += `<div class="comment-meta">Posted ${new Date().toLocaleDateString()}</div>`;
+            
+            div.innerHTML = content;
+            div.addEventListener('click', () => selectComment(comment, imageUrls));
+            commentsDiv.appendChild(div);
+        });
+        
+    } catch (error) {
+        console.error('Error loading comments:', error);
+        commentsDiv.innerHTML = '<p style="text-align: center; color: red;">Error loading comments</p>';
+    }
+}
+
+function extractImageUrls(content) {
+    const urls = [];
+    
+    function traverse(node) {
+        if (node.type === 'image' && node.attrs?.src) {
+            urls.push(node.attrs.src);
+        }
+        if (node.children) {
+            node.children.forEach(traverse);
+        }
+    }
+    
+    traverse(content);
+    return urls;
+}
+
+function selectComment(comment, imageUrls) {
+    // Clear previous selection
+    document.querySelectorAll('.comment-item').forEach(item => {
+        item.classList.remove('selected');
+    });
+    
+    // Select new comment
+    document.querySelector(`[data-comment-id="${comment.id}"]`).classList.add('selected');
+    
+    selectedComment = comment;
+    commentImages = imageUrls;
+    
+    // Show selected comment preview
+    document.getElementById('commentSelected').style.display = 'block';
+    document.getElementById('commentContent').innerHTML = `
+        <strong>Selected Comment:</strong>
+        <div style="margin: 1rem 0; padding: 1rem; background: white; border-radius: 5px;">
+            ${comment.raw_content || 'No text content'}
+        </div>
+    `;
+    
+    const imagesDiv = document.getElementById('commentImages');
+    imagesDiv.innerHTML = '';
+    if (imageUrls.length > 0) {
+        imagesDiv.innerHTML = '<strong>Images in comment:</strong>';
+        imageUrls.forEach(url => {
+            const img = document.createElement('img');
+            img.src = url;
+            img.style.maxWidth = '150px';
+            img.style.margin = '0.5rem';
+            imagesDiv.appendChild(img);
+        });
+    }
+}
+
+async function processComment() {
+    if (!selectedComment) {
+        alert('Please select a comment first');
+        return;
+    }
+    
+    const processType = document.getElementById('commentProcessType').value;
+    const resultDiv = document.getElementById('commentResult');
+    resultDiv.innerHTML = '<div class="loading"></div>';
+    
+    try {
+        switch(processType) {
+            case 'image-to-text':
+                if (commentImages.length === 0) {
+                    alert('No images found in comment for Image → Text processing');
+                    return;
+                }
+                await processImageToText();
+                break;
+                
+            case 'text-to-image':
+                await processTextToImage();
+                break;
+                
+            case 'text-to-speech':
+                await processTextToSpeech();
+                break;
+                
+            case 'chain':
+                if (commentImages.length === 0) {
+                    alert('No images found in comment for Image → Text → Image processing');
+                    return;
+                }
+                await processChain();
+                break;
+        }
+        
+        document.getElementById('commentOutputBtn').style.display = 'inline-block';
+    } catch (error) {
+        resultDiv.innerHTML = `<p style="color: red;">Error: ${error.message}</p>`;
+        document.getElementById('commentOutputBtn').style.display = 'none';
+    }
+}
+
+async function processImageToText() {
+    const imageUrl = commentImages[0]; // Use first image
+    
+    const analysis = await websim.chat.completions.create({
+        messages: [
+            {
+                role: "user",
+                content: [
+                    {
+                        type: "text",
+                        text: "Describe this image in detail. Include what's visible, the style, colors, mood, and any interesting elements."
+                    },
+                    {
+                        type: "image_url",
+                        image_url: { url: imageUrl }
+                    }
+                ]
+            }
+        ]
+    });
+    
+    const resultDiv = document.getElementById('commentResult');
+    resultDiv.innerHTML = `
+        <h3>Image Analysis:</h3>
+        <img src="${imageUrl}" alt="Comment image" style="max-width: 300px; margin: 1rem 0;" />
+        <p style="text-align: left; white-space: pre-wrap;">${analysis.content}</p>
+    `;
+    
+    lastGeneratedText = `Comment Image→Text "${analysis.content}"`;
+    lastGeneratedImage = imageUrl;
+}
+
+async function processTextToImage() {
+    const text = selectedComment.raw_content || 'AI generated from comment';
+    
+    const image = await websim.imageGen({
+        prompt: text,
+        aspect_ratio: "16:9"
+    });
+    
+    const resultDiv = document.getElementById('commentResult');
+    resultDiv.innerHTML = `
+        <h3>Generated from Comment:</h3>
+        <img src="${image.url}" alt="Generated from comment" style="max-width: 400px;" />
+        <p style="margin-top: 1rem;"><strong>Prompt:</strong> ${text}</p>
+    `;
+    
+    lastGeneratedText = `Comment Text→Image "${text}"`;
+    lastGeneratedImage = image.url;
+}
+
+async function processTextToSpeech() {
+    const text = selectedComment.raw_content || 'AI generated speech';
+    
+    const speech = await websim.textToSpeech({
+        text: text,
+        voice: 'en-male'
+    });
+    
+    const resultDiv = document.getElementById('commentResult');
+    resultDiv.innerHTML = `
+        <h3>Speech from Comment:</h3>
+        <audio controls>
+            <source src="${speech.url}" type="audio/mpeg">
+            Your browser does not support the audio element.
+        </audio>
+        <p style="margin-top: 1rem;"><strong>Text:</strong> ${text}</p>
+    `;
+    
+    lastGeneratedText = `Comment Text→Speech "${text}"`;
+    lastGeneratedAudio = speech.url;
+}
+
+async function processChain() {
+    const imageUrl = commentImages[0]; // Use first image
+    
+    // Step 1: Analyze image
+    const analysis = await websim.chat.completions.create({
+        messages: [
+            {
+                role: "user",
+                content: [
+                    {
+                        type: "text",
+                        text: "Describe this image in detail for the purpose of generating a new image. Focus on the key visual elements, style, and composition."
+                    },
+                    {
+                        type: "image_url",
+                        image_url: { url: imageUrl }
+                    }
+                ]
+            }
+        ]
+    });
+    
+    // Step 2: Generate new image
+    const newImage = await websim.imageGen({
+        prompt: analysis.content,
+        aspect_ratio: "16:9"
+    });
+    
+    const resultDiv = document.getElementById('commentResult');
+    resultDiv.innerHTML = `
+        <h3>Chain Process Results:</h3>
+        <img src="${imageUrl}" alt="Comment image" style="max-width: 200px; margin: 0.5rem;" />
+        <img src="${newImage.url}" alt="Generated from analysis" style="max-width: 200px; margin: 0.5rem;" />
+        <h4>Analysis:</h4>
+        <p style="text-align: left; white-space: pre-wrap; margin-bottom: 1rem;">${analysis.content}</p>
+    `;
+    
+    lastGeneratedText = `Comment Image→Text→Image "${analysis.content}"`;
+    lastGeneratedImage = newImage.url;
 }
 
 // Download utilities

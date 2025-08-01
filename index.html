@@ -19,6 +19,7 @@
             <button class="nav-btn" data-workflow="image-to-text">Image → Text</button>
             <button class="nav-btn" data-workflow="chain">Image → Text → Image</button>
             <button class="nav-btn" data-workflow="combine">Combine Images</button>
+            <button class="nav-btn" data-workflow="comment-to-x">Comment → X</button>
         </nav>
 
         <main>
@@ -119,6 +120,40 @@
                 </div>
                 <div id="combineResult" class="result-area"></div>
                 <button id="commentCombineBtn" onclick="commentResult('combine')" class="secondary-btn" style="display: none; margin-top: 1rem;">💬 Post as Comment</button>
+            </section>
+
+            <!-- Comment to X Workflow -->
+            <section id="comment-to-x" class="workflow">
+                <h2>Comment → X</h2>
+                <div class="input-group">
+                    <p>Select a comment to use as input for AI workflows</p>
+                    <div id="commentsList" class="comments-list">
+                        <div class="loading">Loading comments...</div>
+                    </div>
+                </div>
+                
+                <div id="commentSelected" style="display: none;">
+                    <div class="comment-preview">
+                        <div id="commentContent"></div>
+                        <div id="commentImages"></div>
+                    </div>
+                    
+                    <div class="options">
+                        <label>Process as:
+                            <select id="commentProcessType">
+                                <option value="image-to-text">Image → Text</option>
+                                <option value="text-to-image">Text → Image</option>
+                                <option value="text-to-speech">Text → Speech</option>
+                                <option value="chain">Image → Text → Image</option>
+                            </select>
+                        </label>
+                    </div>
+                    
+                    <button onclick="processComment()" class="primary-btn">Process</button>
+                </div>
+                
+                <div id="commentResult" class="result-area"></div>
+                <button id="commentOutputBtn" onclick="commentResult('comment-to-x')" class="secondary-btn" style="display: none; margin-top: 1rem;">💬 Post as Comment</button>
             </section>
         </main>
     </div>
