@@ -419,23 +419,25 @@ async function loadComments() {
             div.className = 'comment-item';
             div.dataset.commentId = comment.id;
             
+            // Extract images from comment content
+            let imageUrls = [];
+            if (comment.content?.children) {
+                imageUrls = extractImageUrls(comment.content);
+            } else if (comment.content?.content) {
+                imageUrls = extractImageUrlsFromContent(comment.content);
+            }
+            
             let content = `
                 <div class="comment-author">${comment.author.username}</div>
                 <div class="comment-text">${comment.raw_content || 'No text'}</div>
             `;
             
-            // Handle images in comments
-            let hasImages = false;
-            if (comment.content?.children) {
-                const imageUrls = extractImageUrls(comment.content);
-                if (imageUrls.length > 0) {
-                    content += '<div class="comment-images">';
-                    imageUrls.forEach(url => {
-                        content += `<img src="${url}" alt="Comment image" />`;
-                    });
-                    content += '</div>';
-                    hasImages = true;
-                }
+            if (imageUrls.length > 0) {
+                content += '<div class="comment-images">';
+                imageUrls.forEach(url => {
+                    content += `<img src="${url}" alt="Comment image" />`;
+                });
+                content += '</div>';
             }
             
             content += `<div class="comment-meta">Posted ${new Date().toLocaleDateString()}</div>`;
@@ -449,6 +451,25 @@ async function loadComments() {
         console.error('Error loading comments:', error);
         commentsDiv.innerHTML = '<p style="text-align: center; color: red;">Error loading comments</p>';
     }
+}
+
+// Helper function to extract image URLs from comment content structure
+function extractImageUrlsFromContent(content) {
+    const urls = [];
+    
+    if (content.content) {
+        content.content.forEach(item => {
+            if (item.type === 'paragraph') {
+                item.content.forEach(subItem => {
+                    if (subItem.type === 'image' && subItem.attrs?.src) {
+                        urls.push(subItem.attrs.src);
+                    }
+                });
+            }
+        });
+    }
+    
+    return urls;
 }
 
 function extractImageUrls(content) {
