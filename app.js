@@ -559,7 +559,7 @@ async function processImageToText() {
     try {
         console.log('Processing Image→Text with URL:', imageUrl);
         
-        const analysis = await websim.chat.completions.create({
+        const completion = await websim.chat.completions.create({
             messages: [
                 {
                     role: "user",
@@ -577,19 +577,24 @@ async function processImageToText() {
             ]
         });
         
-        console.log('Image analysis complete:', analysis);
+        console.log('Image analysis complete:', completion);
         
         const resultDiv = document.getElementById('commentResult');
         resultDiv.innerHTML = `
             <h3>Image Analysis:</h3>
             <img src="${imageUrl}" alt="Comment image" style="max-width: 300px; margin: 1rem 0;" />
-            <p style="text-align: left; white-space: pre-wrap;">${analysis.content}</p>
+            <p style="text-align: left; white-space: pre-wrap;">${completion.content}</p>
         `;
         
-        lastGeneratedText = `Comment Image→Text "${analysis.content}"`;
+        lastGeneratedText = `Comment Image→Text "${completion.content}"`;
         lastGeneratedImage = imageUrl;
     } catch (error) {
         console.error('Error in Image→Text processing:', error);
+        console.error('Full error details:', {
+            error: error.message,
+            stack: error.stack,
+            imageUrl: imageUrl
+        });
         throw new Error(`Image analysis failed: ${error.message}`);
     }
 }
@@ -618,6 +623,11 @@ async function processTextToImage() {
         lastGeneratedImage = image.url;
     } catch (error) {
         console.error('Error in Text→Image processing:', error);
+        console.error('Full error details:', {
+            error: error.message,
+            stack: error.stack,
+            text: text
+        });
         throw new Error(`Image generation failed: ${error.message}`);
     }
 }
@@ -649,6 +659,11 @@ async function processTextToSpeech() {
         lastGeneratedAudio = speech.url;
     } catch (error) {
         console.error('Error in Text→Speech processing:', error);
+        console.error('Full error details:', {
+            error: error.message,
+            stack: error.stack,
+            text: text
+        });
         throw new Error(`Speech generation failed: ${error.message}`);
     }
 }
@@ -701,6 +716,11 @@ async function processChain() {
         lastGeneratedImage = newImage.url;
     } catch (error) {
         console.error('Error in Image→Text→Image processing:', error);
+        console.error('Full error details:', {
+            error: error.message,
+            stack: error.stack,
+            imageUrl: imageUrl
+        });
         throw new Error(`Chain processing failed: ${error.message}`);
     }
 }
