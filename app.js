@@ -526,11 +526,11 @@ async function processComment() {
                 break;
                 
             case 'text-to-image':
-                await generateImage();
+                await processTextToImage();
                 break;
                 
             case 'text-to-speech':
-                await generateSpeech();
+                await processTextToSpeech();
                 break;
                 
             case 'chain':
@@ -546,6 +546,158 @@ async function processComment() {
     } catch (error) {
         resultDiv.innerHTML = `<p style="color: red;">Error: ${error.message}</p>`;
         document.getElementById('commentOutputBtn').style.display = 'none';
+    }
+}
+
+// Process functions for comment to X
+async function processImageToText() {
+    const resultDiv = document.getElementById('commentResult');
+    
+    try {
+        const imageUrl = commentImages[0];
+        
+        // Re-upload the image to avoid CORS issues
+        const response = await fetch(imageUrl);
+        const blob = await response.blob();
+        const base64 = await new Promise((resolve) => {
+            const reader = new FileReader();
+            reader.onloadend = () => resolve(reader.result);
+            reader.readAsDataURL(blob);
+        });
+        
+        const analysis = await websim.chat.completions.create({
+            messages: [
+                {
+                    role: "user",
+                    content: [
+                        {
+                            type: "text",
+                            text: "Describe this image in detail. Include what's visible, the style, colors, mood, and any interesting elements."
+                        },
+                        {
+                            type: "image_url",
+                            image_url: { url: base64 }
+                        }
+                    ]
+                }
+            ]
+        });
+        
+        lastGeneratedText = `Image->Text "${analysis.content}"`;
+        
+        resultDiv.innerHTML = `
+            <h3>Analysis:</h3>
+            <p style="text-align: left; white-space: pre-wrap;">${analysis.content}</p>
+        `;
+    } catch (error) {
+        throw error;
+    }
+}
+
+async function processTextToImage() {
+    const prompt = selectedComment.raw_content || 'AI generated image from comment';
+    const resultDiv = document.getElementById('commentResult');
+    resultDiv.innerHTML = '<div class="loading"></div>';
+    
+    try {
+        const result = await websim.imageGen({
+            prompt: prompt,
+            aspect_ratio: "16:9"
+        });
+        
+        lastGeneratedImage = result.url;
+        lastGeneratedText = `Text->Image "${prompt}"`;
+        
+        resultDiv.innerHTML = `
+            <img src="${result.url}" alt="Generated from comment" />
+            <button onclick="downloadImage('${result.url}', 'ai-comment-image.png')" class="primary-btn" style="display: inline-block; margin-top: 1rem;">Download</button>
+        `;
+    } catch (error) {
+        throw error;
+    }
+}
+
+async function processTextToSpeech() {
+    const text = selectedComment.raw_content || 'No text provided';
+    const resultDiv = document.getElementById('commentResult');
+    resultDiv.innerHTML = '<div class="loading"></div>';
+    
+    try {
+        const result = await websim.textToSpeech({
+            text: text,
+            voice: 'en-male'
+        });
+        
+        lastGeneratedAudio = result.url;
+        lastGeneratedText = `Text->Speech "${text}"`;
+        
+        resultDiv.innerHTML = `
+            <audio controls>
+                <source src="${result.url}" type="audio/mpeg">
+                Your browser does not support the audio element.
+            </audio>
+            <button onclick="downloadAudio('${result.url}', 'comment-audio.mp3')" class="primary-btn" style="display: inline-block; margin-top: 1rem;">Download</button>
+        `;
+    } catch (error) {
+        throw error;
+    }
+}
+
+async function processChain() {
+    const resultDiv = document.getElementById('commentResult');
+    resultDiv.innerHTML = '<div class="loading"></div><p>Analyzing image...</p>';
+    
+    try {
+        const imageUrl = commentImages[0];
+        
+        // Re-upload the image to avoid CORS issues
+        const response = await fetch(imageUrl);
+        const blob = await response.blob();
+        const base64 = await new Promise((resolve) => {
+            const reader = new FileReader();
+            reader.onloadend = () => resolve(reader.result);
+            reader.readAsDataURL(blob);
+        });
+        
+        // Step 1: Analyze image
+        const analysis = await websim.chat.completions.create({
+            messages: [
+                {
+                    role: "user",
+                    content: [
+                        {
+                            type: "text",
+                            text: "Describe this image in detail for the purpose of generating a new image. Focus on the key visual elements, style, and composition."
+                        },
+                        {
+                            type: "image_url",
+                            image_url: { url: base64 }
+                        }
+                    ]
+                }
+            ]
+        });
+        
+        resultDiv.innerHTML = '<div class="loading"></div><p>Generating new image...</p>';
+        
+        // Step 2: Generate new image
+        const newImage = await websim.imageGen({
+            prompt: analysis.content,
+            aspect_ratio: "16:9"
+        });
+        
+        lastGeneratedImage = newImage.url;
+        lastGeneratedText = `Image->Text->Image "${analysis.content}"`;
+        
+        resultDiv.innerHTML = `
+            <h3>Original Analysis:</h3>
+            <p style="text-align: left; white-space: pre-wrap; margin-bottom: 2rem;">${analysis.content}</p>
+            <h3>Generated Image:</h3>
+            <img src="${newImage.url}" alt="Generated from analysis" />
+            <button onclick="downloadImage('${newImage.url}', 'ai-chain-comment-image.png')" class="primary-btn" style="display: inline-block; margin-top: 1rem;">Download</button>
+        `;
+    } catch (error) {
+        throw error;
     }
 }
 
