@@ -419,12 +419,10 @@ async function loadComments() {
             div.className = 'comment-item';
             div.dataset.commentId = comment.id;
             
-            // Extract images from comment content
+            // Extract images from raw_content markdown
             let imageUrls = [];
-            if (comment.content?.children) {
-                imageUrls = extractImageUrls(comment.content);
-            } else if (comment.content?.content) {
-                imageUrls = extractImageUrlsFromContent(comment.content);
+            if (comment.raw_content) {
+                imageUrls = extractImageUrlsFromMarkdown(comment.raw_content);
             }
             
             let content = `
@@ -453,38 +451,22 @@ async function loadComments() {
     }
 }
 
-// Helper function to extract image URLs from comment content structure
-function extractImageUrlsFromContent(content) {
+// Updated image extraction for markdown format
+function extractImageUrlsFromMarkdown(content) {
     const urls = [];
     
-    if (content.content) {
-        content.content.forEach(item => {
-            if (item.type === 'paragraph') {
-                item.content.forEach(subItem => {
-                    if (subItem.type === 'image' && subItem.attrs?.src) {
-                        urls.push(subItem.attrs.src);
-                    }
-                });
-            }
-        });
-    }
+    // Match the pattern [![](url)](url) or ![](url)
+    const regex = /!\[.*?\]\((.*?)\)|\[!\[.*?\]\((.*?)\)\]\((.*?)\)/g;
+    let match;
     
-    return urls;
-}
-
-function extractImageUrls(content) {
-    const urls = [];
-    
-    function traverse(node) {
-        if (node.type === 'image' && node.attrs?.src) {
-            urls.push(node.attrs.src);
-        }
-        if (node.children) {
-            node.children.forEach(traverse);
+    while ((match = regex.exec(content)) !== null) {
+        // The actual image URL is either in group 1 (simple format) or group 2 (linked format)
+        const url = match[1] || match[2] || match[3];
+        if (url && !urls.includes(url)) {
+            urls.push(url);
         }
     }
     
-    traverse(content);
     return urls;
 }
 
