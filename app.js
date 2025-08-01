@@ -724,7 +724,7 @@ async function processChain() {
         
         console.log('New image generated:', newImage);
         
-        const resultDiv = document.getElementById('commentResult');
+        // Use existing resultDiv instead of redeclaring
         resultDiv.innerHTML = `
             <h3>Chain Process Results:</h3>
             <img src="${imageUrl}" alt="Comment image" style="max-width: 200px; margin: 0.5rem;" />
@@ -736,7 +736,11 @@ async function processChain() {
         lastGeneratedText = `Comment Image→Text→Image "${analysis.content}"`;
         lastGeneratedImage = newImage.url;
     } catch (error) {
-        console.error('Error in Image→Text→Image processing:', error);
+        console.error('Full error in Image→Text→Image processing:', {
+            error: error.message,
+            stack: error.stack,
+            imageUrl: imageUrl
+        });
         throw error;
     }
 }
