@@ -559,14 +559,11 @@ async function processImageToText() {
     try {
         console.log('Processing Image→Text with URL:', imageUrl);
         
-        // Skip re-upload for websim.com URLs as they should already be accessible
-        let processedImageUrl = imageUrl;
-        if (!imageUrl.includes('websim.com')) {
-            const response = await fetch(imageUrl);
-            const blob = await response.blob();
-            processedImageUrl = await websim.upload(blob);
-            console.log('Re-uploaded image URL:', processedImageUrl);
-        }
+        // Always re-upload to get a proper blob URL that the AI service can access
+        const response = await fetch(imageUrl);
+        const blob = await response.blob();
+        const blobUrl = await websim.upload(blob);
+        console.log('Re-uploaded image to blob URL:', blobUrl);
         
         const completion = await websim.chat.completions.create({
             messages: [
@@ -579,7 +576,7 @@ async function processImageToText() {
                         },
                         {
                             type: "image_url",
-                            image_url: { url: processedImageUrl }
+                            image_url: { url: blobUrl }
                         }
                     ]
                 }
@@ -599,15 +596,28 @@ async function processImageToText() {
         lastGeneratedImage = imageUrl;
     } catch (error) {
         console.error('Error in Image→Text processing:', error);
-        console.error('Full error details:', {
-            error: error.message,
+        
+        // Enhanced error logging
+        let errorDetails = {
+            message: error.message,
             stack: error.stack,
             imageUrl: imageUrl,
             errorResponse: error.response || 'No response details'
-        });
+        };
         
-        // Provide a more user-friendly error message
-        throw new Error(`Image analysis failed: ${error.message || 'Unable to process the image. Please try a different image or check if the image URL is accessible.'}`);
+        if (error.response) {
+            try {
+                const errorText = await error.response.text();
+                errorDetails.responseText = errorText;
+                console.error('Server response:', errorText);
+            } catch (e) {
+                console.error('Could not read error response:', e);
+            }
+        }
+        
+        console.error('Full error details:', errorDetails);
+        
+        throw new Error(`Image analysis failed: ${error.message || 'Unable to process the image. Please try a different image.'}`);
     }
 }
 
@@ -686,14 +696,11 @@ async function processChain() {
     try {
         console.log('Processing Image→Text→Image with URL:', imageUrl);
         
-        // Skip re-upload for websim.com URLs
-        let processedImageUrl = imageUrl;
-        if (!imageUrl.includes('websim.com')) {
-            const response = await fetch(imageUrl);
-            const blob = await response.blob();
-            processedImageUrl = await websim.upload(blob);
-            console.log('Re-uploaded image URL:', processedImageUrl);
-        }
+        // Always re-upload to get a proper blob URL
+        const response = await fetch(imageUrl);
+        const blob = await response.blob();
+        const blobUrl = await websim.upload(blob);
+        console.log('Re-uploaded image to blob URL:', blobUrl);
         
         // Step 1: Analyze image
         const analysis = await websim.chat.completions.create({
@@ -707,7 +714,7 @@ async function processChain() {
                         },
                         {
                             type: "image_url",
-                            image_url: { url: processedImageUrl }
+                            image_url: { url: blobUrl }
                         }
                     ]
                 }
@@ -737,12 +744,26 @@ async function processChain() {
         lastGeneratedImage = newImage.url;
     } catch (error) {
         console.error('Error in Image→Text→Image processing:', error);
-        console.error('Full error details:', {
-            error: error.message,
+        
+        // Enhanced error logging
+        let errorDetails = {
+            message: error.message,
             stack: error.stack,
             imageUrl: imageUrl,
             errorResponse: error.response || 'No response details'
-        });
+        };
+        
+        if (error.response) {
+            try {
+                const errorText = await error.response.text();
+                errorDetails.responseText = errorText;
+                console.error('Server response:', errorText);
+            } catch (e) {
+                console.error('Could not read error response:', e);
+            }
+        }
+        
+        console.error('Full error details:', errorDetails);
         
         throw new Error(`Chain processing failed: ${error.message || 'Unable to complete the chain workflow. Please try a different image.'}`);
     }
