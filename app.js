@@ -213,15 +213,31 @@ function handleCombineUpload(event, index) {
     reader.readAsDataURL(file);
 }
 
+// Add weight slider functionality
+document.addEventListener('DOMContentLoaded', () => {
+    const slider = document.getElementById('weightSlider');
+    const display = document.getElementById('weightDisplay');
+    
+    if (slider) {
+        slider.addEventListener('input', (e) => {
+            const value = e.target.value;
+            display.textContent = `${value}% Image 1 / ${100-value}% Image 2`;
+        });
+    }
+});
+
 async function combineImages() {
     if (!uploadedImage || !uploadedImage2) return;
     
     const prompt = document.getElementById('combinePrompt').value || "Combine these two images in a creative way";
+    const weight1 = document.getElementById('weightSlider')?.value || 50;
+    const weight2 = 100 - weight1;
+    
     const resultDiv = document.getElementById('combineResult');
-    resultDiv.innerHTML = '<div class="loading"></div><p>Analyzing images...</p>';
+    resultDiv.innerHTML = '<div class="loading"></div><p>Analyzing images in detail...</p>';
     
     try {
-        // Analyze both images
+        // Enhanced analysis with separate detailed descriptions
         const analysis = await websim.chat.completions.create({
             messages: [
                 {
@@ -229,7 +245,35 @@ async function combineImages() {
                     content: [
                         {
                             type: "text",
-                            text: `Analyze these two images and describe how they could be combined based on this prompt: "${prompt}". Focus on creative ways to merge the visual elements.`
+                            text: `I need to combine these two images based on this prompt: "${prompt}". 
+                            
+Please provide a DETAILED technical analysis for each image:
+
+**Image 1 Analysis (Weight: ${weight1}%):**
+1. Main subject/objects and their positions
+2. Color palette and dominant colors
+3. Lighting conditions and mood
+4. Style/artistic elements
+5. Background details
+6. Textures and patterns
+7. Composition/framing
+
+**Image 2 Analysis (Weight: ${weight2}%):**
+1. Main subject/objects and their positions
+2. Color palette and dominant colors
+3. Lighting conditions and mood
+4. Style/artistic elements
+5. Background details
+6. Textures and patterns
+7. Composition/framing
+
+**Combination Strategy:**
+Based on the weights (${weight1}% Image 1, ${weight2}% Image 2) and prompt "${prompt}", provide specific instructions for how to merge these images while preserving the most important details from each. Include guidance on:
+- Which elements to emphasize from each image
+- How to blend the color palettes
+- How to handle conflicting styles
+- Positioning recommendations
+- Any creative interpretations`
                         },
                         {
                             type: "image_url",
@@ -244,19 +288,30 @@ async function combineImages() {
             ]
         });
         
-        resultDiv.innerHTML = '<div class="loading"></div><p>Creating combined image...</p>';
+        resultDiv.innerHTML = '<div class="loading"></div><p>Creating sophisticated combined image...</p>';
         
-        // Generate combined image
+        // Enhanced prompt for better detail preservation
+        const enhancedPrompt = `Based on the detailed analysis below, create a combined image that preserves key details from both sources:
+
+${analysis.content}
+
+IMPORTANT: Ensure the final image maintains high fidelity to both source images, with clear visibility of important elements from each according to their specified weights. Avoid losing details in the merge process.`;
+        
+        // Generate combined image with higher quality settings
         const combinedImage = await websim.imageGen({
-            prompt: analysis.content,
-            aspect_ratio: "16:9"
+            prompt: enhancedPrompt,
+            aspect_ratio: "16:9",
+            quality: "high",
+            style: "photographic"
         });
         
         resultDiv.innerHTML = `
-            <h3>Analysis & Combination Strategy:</h3>
-            <p style="text-align: left; white-space: pre-wrap; margin-bottom: 2rem;">${analysis.content}</p>
-            <h3>Combined Result:</h3>
-            <img src="${combinedImage.url}" alt="Combined image" />
+            <h3>Detailed Analysis & Combination Strategy:</h3>
+            <div style="text-align: left; white-space: pre-wrap; max-height: 300px; overflow-y: auto; background: #f5f5f5; padding: 1rem; border-radius: 10px; margin-bottom: 2rem;">
+                ${analysis.content}
+            </div>
+            <h3>Combined Result (${weight1}% Image 1 / ${weight2}% Image 2):</h3>
+            <img src="${combinedImage.url}" alt="Combined image" style="max-width: 100%; border-radius: 10px; box-shadow: 0 5px 15px rgba(0,0,0,0.1);" />
             <button onclick="downloadImage('${combinedImage.url}', 'ai-combined-image.png')" class="primary-btn" style="display: inline-block; margin-top: 1rem;">Download</button>
         `;
     } catch (error) {
