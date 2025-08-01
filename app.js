@@ -237,7 +237,7 @@ async function combineImages() {
     resultDiv.innerHTML = '<div class="loading"></div><p>Analyzing images in detail...</p>';
     
     try {
-        // Enhanced analysis with separate detailed descriptions
+        // Enhanced analysis focused on user intent
         const analysis = await websim.chat.completions.create({
             messages: [
                 {
@@ -246,25 +246,14 @@ async function combineImages() {
                         {
                             type: "text",
                             text: `I need to combine these two images based on this prompt: "${prompt}". 
-                            
-Please provide a DETAILED technical analysis for each image and create a final English description using only alphanumeric characters and spaces.
 
-**Image 1 Analysis (Weight: ${weight1}%):**
-1. Main subject and objects
-2. Color palette and dominant colors
-3. Lighting and mood
-4. Style and composition
-5. Background elements
+Focus on the specific elements mentioned in the prompt. If the user mentions "human" or any specific object, ensure those elements are preserved with exact detail in the final description.
 
-**Image 2 Analysis (Weight: ${weight2}%):**
-1. Main subject and objects
-2. Color palette and dominant colors
-3. Lighting and mood
-4. Style and composition
-5. Background elements
+Create a flowing paragraph description using only English alphanumeric characters and spaces. Write as if an author is describing the scene, avoiding any numbered lists or bullet points.
 
-**Final Description:**
-Create a single paragraph description in plain English using only alphanumeric characters and spaces. This description should guide the creation of a new image that combines both source images according to the specified weights while maintaining all important visual details.`
+The description should balance Image 1 (${weight1}%) and Image 2 (${weight2}%) according to the specified weights while maintaining all important visual details.
+
+Describe the scene naturally, focusing on composition, colors, lighting, and key elements that should be preserved from each image.`
                         },
                         {
                             type: "image_url",
@@ -294,7 +283,7 @@ Create a single paragraph description in plain English using only alphanumeric c
         });
         
         resultDiv.innerHTML = `
-            <h3>Analysis & Cleaned Description:</h3>
+            <h3>Cleaned Description:</h3>
             <div style="text-align: left; white-space: pre-wrap; max-height: 150px; overflow-y: auto; background: #f5f5f5; padding: 1rem; border-radius: 10px; margin-bottom: 2rem;">
                 ${cleanedPrompt}
             </div>
